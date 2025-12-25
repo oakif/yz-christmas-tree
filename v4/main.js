@@ -20,10 +20,63 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+renderer.toneMappingExposure = CONFIG.toneMappingExposure;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = false; // Keep shadows off for performance
 container.appendChild(renderer.domElement);
+
+// --- ENVIRONMENT MAP FOR GLASS REFLECTIONS/REFRACTIONS ---
+let envMap = null;
+
+function createEnvironmentMap() {
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const envScene = new THREE.Scene();
+
+    // Create gradient sky background
+    const gradientShader = {
+        uniforms: {
+            topColor: { value: new THREE.Color(CONFIG.environmentMap.topColor) },
+            bottomColor: { value: new THREE.Color(CONFIG.environmentMap.bottomColor) },
+            offset: { value: 33 },
+            exponent: { value: 0.6 }
+        },
+        vertexShader: `
+            varying vec3 vWorldPosition;
+            void main() {
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPosition.xyz;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform vec3 topColor;
+            uniform vec3 bottomColor;
+            uniform float offset;
+            uniform float exponent;
+            varying vec3 vWorldPosition;
+            void main() {
+                float h = normalize(vWorldPosition + offset).y;
+                gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+            }
+        `
+    };
+
+    const skyGeo = new THREE.SphereGeometry(100, 32, 15);
+    const skyMat = new THREE.ShaderMaterial({
+        uniforms: gradientShader.uniforms,
+        vertexShader: gradientShader.vertexShader,
+        fragmentShader: gradientShader.fragmentShader,
+        side: THREE.BackSide
+    });
+    const sky = new THREE.Mesh(skyGeo, skyMat);
+    envScene.add(sky);
+
+    envMap = pmremGenerator.fromScene(envScene).texture;
+    pmremGenerator.dispose();
+}
+
+createEnvironmentMap();
+scene.environment = envMap;
 
 // --- SETUP IMAGE ---
 const imgElement = document.getElementById('reward-image');
@@ -196,8 +249,10 @@ const OBJECT_DEFAULTS = {
     color: 0xffffff,
     emissive: 0x000000,
     emissiveIntensity: 0.0,
-    metalness: 0.5,
-    roughness: 0.5
+    metalness: 0.5,              // Only used for non-configured materials
+    roughness: 0.5,              // Only used for non-configured materials
+    materialType: 'matte',       // Default material type
+    materialOverrides: {}        // Material property overrides
 };
 
 // Material caching to prevent duplicate instances
@@ -230,27 +285,141 @@ function getGeometryForType(type) {
 }
 
 function getMaterialFromDefinition(def) {
-    // Cache materials by unique properties to avoid duplicates
-    const key = JSON.stringify({
+    const useMaterialPreset = def.materialType !== null && def.materialType !== undefined;
+
+    // Build cache key
+    const cacheKeyBase = {
         color: def.color,
         emissive: def.emissive,
         emissiveIntensity: def.emissiveIntensity,
-        metalness: def.metalness,
-        roughness: def.roughness
-    });
+    };
 
-    if (!materialCache.has(key)) {
-        materialCache.set(key, new THREE.MeshStandardMaterial({
+    let key;
+    if (useMaterialPreset) {
+        const materialProps = {
+            ...CONFIG.materialDefaults,
+            ...(CONFIG.materialPresets[def.materialType] || {}),
+            ...(def.materialOverrides || {})
+        };
+        key = JSON.stringify({
+            ...cacheKeyBase,
+            materialType: def.materialType,
+            performanceMode: CONFIG.performanceMode,
+            materialProps: materialProps
+        });
+    } else {
+        // Legacy fallback for objects without materialType
+        key = JSON.stringify({
+            ...cacheKeyBase,
+            metalness: def.metalness,
+            roughness: def.roughness
+        });
+    }
+
+    if (materialCache.has(key)) {
+        return materialCache.get(key);
+    }
+
+    // Create new material
+    let material;
+    if (useMaterialPreset) {
+        const materialProps = {
+            ...CONFIG.materialDefaults,
+            ...(CONFIG.materialPresets[def.materialType] || {}),
+            ...(def.materialOverrides || {})
+        };
+
+        // Determine which material class to use
+        const materialClass = materialProps.materialClass || 'Standard';
+
+        if (materialClass === 'Physical') {
+            // Use Physical material for glass types
+            material = CONFIG.performanceMode
+                ? createPerformanceMaterial(def, materialProps)
+                : createPhysicalMaterial(def, materialProps);
+        } else {
+            // Use Standard material for matte, satin, metallic
+            material = createStandardMaterial(def, materialProps);
+        }
+    } else {
+        // Legacy fallback
+        material = new THREE.MeshStandardMaterial({
             color: def.color,
             emissive: def.emissive,
             emissiveIntensity: def.emissiveIntensity,
             metalness: def.metalness,
             roughness: def.roughness,
             side: def.type === 'snowflake' ? THREE.DoubleSide : THREE.FrontSide
-        }));
+        });
     }
 
-    return materialCache.get(key);
+    materialCache.set(key, material);
+    return material;
+}
+
+function createPhysicalMaterial(def, materialProps) {
+    return new THREE.MeshPhysicalMaterial({
+        color: def.color,
+        emissive: def.emissive,
+        emissiveIntensity: def.emissiveIntensity,
+
+        // Material properties
+        transmission: materialProps.transmission || 0,
+        thickness: materialProps.thickness || 0,
+        roughness: materialProps.roughness,
+        metalness: materialProps.metalness || 0,
+        clearcoat: materialProps.clearcoat || 0,
+        clearcoatRoughness: materialProps.clearcoatRoughness || 0,
+        ior: materialProps.ior || 1.5,
+
+        envMap: envMap,
+        envMapIntensity: materialProps.envMapIntensity || 1.0,
+
+        side: def.type === 'snowflake' ? THREE.DoubleSide : THREE.FrontSide,
+        transparent: materialProps.transmission > 0,
+        opacity: 1.0,
+    });
+}
+
+function createPerformanceMaterial(def, materialProps) {
+    // Performance mode: Fake transparency with MeshStandardMaterial
+    const opacity = materialProps.transmission > 0
+        ? 0.4 + (1 - materialProps.transmission) * 0.6  // Map transmission to opacity
+        : 1.0;
+
+    return new THREE.MeshStandardMaterial({
+        color: def.color,
+        emissive: def.emissive,
+        emissiveIntensity: def.emissiveIntensity,
+
+        metalness: materialProps.metalness || 0.1,
+        roughness: materialProps.roughness,
+        envMap: envMap,
+        envMapIntensity: materialProps.envMapIntensity || 1.0,
+
+        transparent: materialProps.transmission > 0,
+        opacity: opacity,
+
+        side: def.type === 'snowflake' ? THREE.DoubleSide : THREE.FrontSide,
+    });
+}
+
+function createStandardMaterial(def, materialProps) {
+    return new THREE.MeshStandardMaterial({
+        color: def.color,
+        emissive: def.emissive,
+        emissiveIntensity: def.emissiveIntensity,
+
+        // Material properties
+        roughness: materialProps.roughness,
+        metalness: materialProps.metalness || 0,
+
+        envMap: envMap,
+        envMapIntensity: materialProps.envMapIntensity || 1.0,
+
+        side: def.type === 'snowflake' ? THREE.DoubleSide : THREE.FrontSide,
+        transparent: false,
+    });
 }
 
 // --- DENSITY-CORRECTED PARTICLE DISTRIBUTION ---
@@ -361,32 +530,55 @@ CONFIG.objects.forEach(objectDef => {
     }
 });
 
-// --- IMPROVED LIGHTING ---
-// Darker ambient for more contrast
-const ambientLight = new THREE.AmbientLight(0x202030, 0.4);
+// --- SOFT, EVEN LIGHTING ---
+// All lighting parameters now come from CONFIG.lighting
+
+const ambientLight = new THREE.AmbientLight(
+    CONFIG.lighting.ambient.color,
+    CONFIG.lighting.ambient.intensity
+);
 scene.add(ambientLight);
 
-// Hemisphere light - cool sky, warm ground for depth
-const hemiLight = new THREE.HemisphereLight(0x4466aa, 0x443322, 0.5);
+const hemiLight = new THREE.HemisphereLight(
+    CONFIG.lighting.hemisphere.skyColor,
+    CONFIG.lighting.hemisphere.groundColor,
+    CONFIG.lighting.hemisphere.intensity
+);
 scene.add(hemiLight);
 
-// Key light - warm, bright, from upper right
-const keyLight = new THREE.DirectionalLight(0xffeedd, 1.8);
-keyLight.position.set(20, 30, 25);
+const keyLight = new THREE.DirectionalLight(
+    CONFIG.lighting.keyLight.color,
+    CONFIG.lighting.keyLight.intensity
+);
+keyLight.position.set(...CONFIG.lighting.keyLight.position);
 scene.add(keyLight);
 
-// Fill light - cool, softer, from left
-const fillLight = new THREE.DirectionalLight(0xaaccff, 0.6);
-fillLight.position.set(-15, 10, -10);
+const fillLight = new THREE.DirectionalLight(
+    CONFIG.lighting.fillLight.color,
+    CONFIG.lighting.fillLight.intensity
+);
+fillLight.position.set(...CONFIG.lighting.fillLight.position);
 scene.add(fillLight);
 
-// Rim/back light - creates edge definition
-const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
-rimLight.position.set(0, -5, -25);
+const rimLight = new THREE.DirectionalLight(
+    CONFIG.lighting.rimLight.color,
+    CONFIG.lighting.rimLight.intensity
+);
+rimLight.position.set(...CONFIG.lighting.rimLight.position);
 scene.add(rimLight);
 
-// Add subtle point light at tree top for star glow effect
-const topGlow = new THREE.PointLight(0xffffee, 0.8, 30);
+const overheadLight = new THREE.DirectionalLight(
+    CONFIG.lighting.overheadLight.color,
+    CONFIG.lighting.overheadLight.intensity
+);
+overheadLight.position.set(...CONFIG.lighting.overheadLight.position);
+scene.add(overheadLight);
+
+const topGlow = new THREE.PointLight(
+    CONFIG.lighting.topGlow.color,
+    CONFIG.lighting.topGlow.intensity,
+    CONFIG.lighting.topGlow.range
+);
 topGlow.position.set(0, CONFIG.treeHeight / 2 + 5, 0);
 scene.add(topGlow);
 

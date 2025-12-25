@@ -13,8 +13,15 @@
  *   - color: 0xffffff (base color)
  *   - emissive: 0x000000 (glow color)
  *   - emissiveIntensity: 0.0 (glow strength, affects bloom)
- *   - metalness: 0.5 (0 = matte, 1 = metallic)
- *   - roughness: 0.5 (0 = smooth, 1 = rough)
+ *   - materialType: 'matte' | 'satin' | 'metallic' | 'glass' | 'frostedGlass'
+ *   - materialOverrides: {} (override specific material properties)
+ *
+ * MATERIAL TYPES:
+ *   - matte: Non-reflective, diffuse surface
+ *   - satin: Soft, diffused reflections
+ *   - metallic: Mirror-like specular reflections
+ *   - glass: Transparent with refraction (clear glass)
+ *   - frostedGlass: Transparent but blurred/diffused
  *
  * TIP: To create multiple variants (e.g., different colored presents),
  * create separate object definitions.
@@ -31,11 +38,10 @@ export const CONFIG = {
             type: 'star',
             count: 400,
             scale: 1.0,
-            color: 0xfffea8,
-            emissive: 0xfffea8,
-            emissiveIntensity: 0.5,
-            metalness: 0.3,
-            roughness: 0.4
+            color: 0xfffee8,
+            // emissive: 0xfffea8,
+            // emissiveIntensity: 0.3,
+            materialType: 'glass',
         },
         {
             type: 'heart',
@@ -43,9 +49,11 @@ export const CONFIG = {
             scale: 0.8,
             color: 0xff0055,
             emissive: 0x220011,
-            emissiveIntensity: 0.15,
-            metalness: 0.0,
-            roughness: 0.35
+            emissiveIntensity: 0.3,
+            materialType: 'frostedGlass',
+            materialOverrides: {
+                transmission: 0.8,
+            }
         },
         // {
         //     type: 'snowflake',
@@ -60,33 +68,30 @@ export const CONFIG = {
         {
             type: 'present',
             count: 133,
-            scale: 0.8,
+            scale: 1.0,
             color: 0xff3333,
-            emissive: 0xff3333,
-            emissiveIntensity: 0.05,
-            metalness: 0.2,
-            roughness: 0.4
+            // emissive: 0xff3333,
+            // emissiveIntensity: 0.05,
+            materialType: 'satin',
         },
         {
             type: 'present',
             count: 133,
-            scale: 0.8,
-            color: 0x33ff33,
-            emissive: 0x33ff33,
-            emissiveIntensity: 0.05,
-            metalness: 0.2,
-            roughness: 0.4
+            scale: 1.0,
+            color: 0xbaa6dff,
+            // emissive: 0x33ff33,
+            // emissiveIntensity: 0.05,
+            materialType: 'satin',
         },
-        {
-            type: 'present',
-            count: 134,
-            scale: 0.8,
-            color: 0x3333ff,
-            emissive: 0x3333ff,
-            emissiveIntensity: 0.05,
-            metalness: 0.2,
-            roughness: 0.4
-        }
+        // {
+        //     type: 'present',
+        //     count: 134,
+        //     scale: 1.0,
+        //     color: 0x3333ff,
+        //     emissive: 0x3333ff,
+        //     emissiveIntensity: 0.05,
+        //     materialType: 'satin',
+        // }
     ],
 
     // --- ANIMATION / PHYSICS ---
@@ -98,7 +103,7 @@ export const CONFIG = {
 
     // --- PARALLAX ---
     parallaxStrengthX: 1.2,    // Mouse Y -> rotation X
-    parallaxStrengthY: 1.5,    // Mouse X -> rotation Y
+    parallaxStrengthY: 2.0,    // Mouse X -> rotation Y
     parallaxSmoothing: 0.05,   // How smooth the parallax follows (lower = smoother)
     parallaxPositionStrengthX: 0.0, // Mouse X -> position movement strength (0 = disabled)
     parallaxPositionStrengthY: 0,   // Mouse Y -> position movement strength (0 = disabled)
@@ -113,12 +118,12 @@ export const CONFIG = {
     cameraZ: 30,
 
     // --- TIMING ---
-    holdDuration: 15000,        // Milliseconds before reforming
+    holdDuration: 30000,        // Milliseconds before reforming
 
     // --- EXPLOSION DISTRIBUTION ---
     // When exploded, particles distribute in a hollow sphere (spherical shell)
     explosionInnerRadius: 30,   // Inner radius - prevents particles too close to camera
-    explosionOuterRadius: 60,   // Outer radius - maximum distance from center
+    explosionOuterRadius: 50,   // Outer radius - maximum distance from center
     explosionCenterMode: 'tree', // 'camera' or 'tree' - where the explosion sphere is centered
     explosionOffsetX: 0,        // X offset from the center point
     explosionOffsetY: -3,        // Y offset from the center point
@@ -134,5 +139,128 @@ export const CONFIG = {
     // --- BLOOM (GLOW EFFECT) ---
     bloomStrength: 0.35,       // Reduced slightly
     bloomRadius: 0.5,
-    bloomThreshold: 0.2        // Raised threshold so only bright things bloom
+    bloomThreshold: 0.2,       // Raised threshold so only bright things bloom
+
+    // --- TONE MAPPING ---
+    toneMappingExposure: 3.0,  // Higher = brighter scene (1.0-2.0 typical range)
+
+    // --- LIGHTING SETUP ---
+    lighting: {
+        ambient: {
+            color: 0x404050,   // Cool gray tone
+            intensity: 1.6,    // Base illumination brightness
+        },
+        hemisphere: {
+            skyColor: 0x5577bb,    // Sky color (top hemisphere)
+            groundColor: 0x554433, // Ground color (bottom hemisphere)
+            intensity: 1.0,        // Brightness of hemisphere light
+        },
+        keyLight: {
+            color: 0xffeedd,   // Warm directional light
+            intensity: 0.4,    // Main light strength
+            position: [20, 30, 25],  // [x, y, z]
+        },
+        fillLight: {
+            color: 0xccddff,   // Cool fill light
+            intensity: 1.5,    // Fill light strength
+            position: [-15, 10, -10],
+        },
+        rimLight: {
+            color: 0xffffff,   // White rim/back light
+            intensity: 0.2,    // Subtle edge definition
+            position: [0, -5, -25],
+        },
+        overheadLight: {
+            color: 0xffffff,   // White overhead light (like sun from above)
+            intensity: 0.6,    // Soft key light from above
+            position: [0, 50, 0],
+        },
+        topGlow: {
+            color: 0xffffee,   // Warm glow at tree top
+            intensity: 0.8,    // Point light strength
+            range: 30,         // Maximum distance this light reaches
+        },
+    },
+
+    // --- ENVIRONMENT MAP ---
+    environmentMap: {
+        topColor: 0x0a0a15,      // Sky gradient top color (dark)
+        bottomColor: 0x1a1a2a,   // Sky gradient bottom color
+        brightness: 1.0,         // Overall brightness multiplier for env map
+    },
+
+    // --- RENDERING QUALITY ---
+    performanceMode: false,  // true = optimized fake glass, false = full refraction
+
+    // --- MATERIAL DEFAULTS ---
+    materialDefaults: {
+        // For Physical materials (glass types)
+        transmission: 0.75,        // Moderate transparency
+        thickness: 0.5,            // Refraction thickness
+        roughness: 0.15,           // Default roughness
+        clearcoat: 0.0,            // NO clearcoat by default (prevents mirror effect)
+        clearcoatRoughness: 0.0,
+        ior: 1.5,                  // Glass IOR
+
+        // For Standard materials (matte, satin, metallic)
+        metalness: 0.2,
+
+        // Environment map
+        envMapIntensity: 1.0,
+    },
+
+    // --- MATERIAL TYPE PRESETS ---
+    materialPresets: {
+        matte: {
+            // Non-reflective, diffuse surface
+            materialClass: 'Standard',
+            roughness: 0.9,
+            metalness: 0.0,
+            transmission: 0.0,
+            clearcoat: 0.0,
+        },
+
+        satin: {
+            // Soft, diffused reflections (like silk or satin fabric)
+            materialClass: 'Standard',
+            roughness: 0.4,
+            metalness: 0.2,
+            transmission: 0.0,
+            clearcoat: 0.3,
+            clearcoatRoughness: 0.5,
+        },
+
+        metallic: {
+            // Specular, mirror-like reflections
+            materialClass: 'Standard',
+            roughness: 0.1,
+            metalness: 0.95,
+            transmission: 0.0,
+            clearcoat: 0.0,
+        },
+
+        glass: {
+            // Transparent with refraction, NOT overly shiny
+            materialClass: 'Physical',
+            roughness: 0.15,
+            metalness: 0.0,
+            transmission: 0.75,
+            thickness: 0.5,
+            clearcoat: 0.0,
+            clearcoatRoughness: 0.0,
+            ior: 1.5,
+        },
+
+        frostedGlass: {
+            // Transparent but heavily blurred/diffused
+            materialClass: 'Physical',
+            roughness: 0.6,
+            metalness: 0.0,
+            transmission: 0.7,
+            thickness: 0.5,
+            clearcoat: 0.0,
+            clearcoatRoughness: 0.0,
+            ior: 1.5,
+        },
+    },
 };
