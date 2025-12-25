@@ -49,12 +49,24 @@ export const CONFIG = {
         },
         {
             type: 'heart',
-            count: 600,
+            count: 800,
             scale: 0.8,
             color: 0xff0055,
             emissive: 0x220011,
             emissiveIntensity: 0.3,
             materialType: 'frostedGlass',
+            materialOverrides: {
+                transmission: 0.8,
+            }
+        },
+        {
+            type: 'circle',
+            count: 1000,
+            scale: 0.25,
+            color: 0xd9b100,
+            emissive: 0x220011,
+            emissiveIntensity: 0.8,
+            materialType: 'glass',
             materialOverrides: {
                 transmission: 0.8,
             }
@@ -71,16 +83,16 @@ export const CONFIG = {
         // },
         {
             type: 'present',
-            count: 133,
+            count: 200,
             scale: 1.0,
-            color: 0xff3333,
+            color: 0x036d49,
             // emissive: 0xff3333,
             // emissiveIntensity: 0.05,
             materialType: 'satin',
         },
         {
             type: 'present',
-            count: 133,
+            count: 200,
             scale: 1.0,
             color: 0xbaa6dff,
             // emissive: 0x33ff33,
@@ -126,8 +138,8 @@ export const CONFIG = {
     // ANIMATION & PHYSICS
     // ========================================
     // Idle animation
-    idleFloatSpeed: 0.005,    // Wobble speed when idle
-    idleFloatAmount: 0.02,    // Wobble magnitude
+    idleFloatSpeed: 0.003,    // Wobble speed when idle
+    idleFloatAmount: 0.05,    // Wobble magnitude
 
     // Explosion physics
     animationSpeed: 0.12,     // Speed for explosion spread and return (0.01 = slow, 0.2 = fast)

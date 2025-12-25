@@ -145,42 +145,111 @@ composer.addPass(bloomPass);
 
 // Gift box with ribbon and bow
 function createGiftBoxGeometry() {
+    // Constants
     const boxSize = 0.5;
     const ribbonWidth = 0.08;
     const ribbonHeight = 0.02;
+    const ribbonOverhang = 0.02;
+    const ribbonOffset = ribbonHeight / 2;
+    const loopRadius = 0.12;
+    const tubeRadius = 0.025;
+    const loopDistance = 0.08;
+    const loopHeight = boxSize / 2 + ribbonHeight + 0.02;
 
     // Main box
     const boxGeom = new THREE.BoxGeometry(boxSize, boxSize, boxSize);
 
-    // Ribbon across top (X direction)
-    const ribbonX = new THREE.BoxGeometry(boxSize + 0.02, ribbonHeight, ribbonWidth);
-    ribbonX.translate(0, boxSize / 2 + ribbonHeight / 2, 0);
+    // Helper: Create ribbon
+    function createRibbon(width, height, depth, tx, ty, tz) {
+        const ribbon = new THREE.BoxGeometry(width, height, depth);
+        ribbon.translate(tx, ty, tz);
+        return ribbon;
+    }
 
-    // Ribbon across top (Z direction)
-    const ribbonZ = new THREE.BoxGeometry(ribbonWidth, ribbonHeight, boxSize + 0.02);
-    ribbonZ.translate(0, boxSize / 2 + ribbonHeight / 2, 0);
+    // Helper: Create bow loop (diagonal outward and upward at 45°)
+    function createBowLoop(angleY) {
+        const loop = new THREE.TorusGeometry(loopRadius, tubeRadius, 8, 12, Math.PI);
+        loop.rotateZ(Math.PI / 2);      // Stand up
+        loop.rotateX(-Math.PI / 4);     // Tilt outward 45°
+        loop.rotateY(angleY);           // Point in diagonal direction
+        const offsetX = Math.cos(angleY) * loopDistance;
+        const offsetZ = Math.sin(angleY) * loopDistance;
+        loop.translate(offsetX, loopHeight, offsetZ);
+        return loop;
+    }
 
-    // Bow loops (two torus segments)
-    const loopRadius = 0.12;
-    const tubeRadius = 0.025;
-    const bowLoop1 = new THREE.TorusGeometry(loopRadius, tubeRadius, 8, 12, Math.PI);
-    bowLoop1.rotateX(Math.PI / 2);
-    bowLoop1.rotateZ(Math.PI / 4);
-    bowLoop1.translate(0.06, boxSize / 2 + ribbonHeight + loopRadius * 0.6, 0.06);
+    // Create 8 ribbons total
+    const ribbons = [
+        // Top face - 2 ribbons in cross pattern
+        createRibbon(
+            boxSize + ribbonOverhang, ribbonHeight, ribbonWidth,
+            0, boxSize / 2 + ribbonOffset, 0
+        ),
+        createRibbon(
+            ribbonWidth, ribbonHeight, boxSize + ribbonOverhang,
+            0, boxSize / 2 + ribbonOffset, 0
+        ),
 
-    const bowLoop2 = new THREE.TorusGeometry(loopRadius, tubeRadius, 8, 12, Math.PI);
-    bowLoop2.rotateX(Math.PI / 2);
-    bowLoop2.rotateZ(-Math.PI / 4 + Math.PI);
-    bowLoop2.translate(-0.06, boxSize / 2 + ribbonHeight + loopRadius * 0.6, -0.06);
+        // Bottom face - 2 ribbons in cross pattern
+        createRibbon(
+            boxSize + ribbonOverhang, ribbonHeight, ribbonWidth,
+            0, -(boxSize / 2 + ribbonOffset), 0
+        ),
+        createRibbon(
+            ribbonWidth, ribbonHeight, boxSize + ribbonOverhang,
+            0, -(boxSize / 2 + ribbonOffset), 0
+        ),
+
+        // Front face - 1 vertical ribbon
+        createRibbon(
+            ribbonWidth, boxSize + ribbonOverhang, ribbonHeight,
+            0, 0, boxSize / 2 + ribbonOffset
+        ),
+
+        // Back face - 1 vertical ribbon
+        createRibbon(
+            ribbonWidth, boxSize + ribbonOverhang, ribbonHeight,
+            0, 0, -(boxSize / 2 + ribbonOffset)
+        ),
+
+        // Right face - 1 vertical ribbon
+        createRibbon(
+            ribbonHeight, boxSize + ribbonOverhang, ribbonWidth,
+            boxSize / 2 + ribbonOffset, 0, 0
+        ),
+
+        // Left face - 1 vertical ribbon
+        createRibbon(
+            ribbonHeight, boxSize + ribbonOverhang, ribbonWidth,
+            -(boxSize / 2 + ribbonOffset), 0, 0
+        ),
+    ];
+
+    // Create 4 bow loops pointing diagonally outward and upward
+    const bowLoops = [
+        createBowLoop(Math.PI / 4),         // 45° NE
+        createBowLoop(3 * Math.PI / 4),     // 135° NW
+        createBowLoop(5 * Math.PI / 4),     // 225° SW
+        createBowLoop(7 * Math.PI / 4),     // 315° SE
+    ];
 
     // Center knot
     const knot = new THREE.SphereGeometry(0.04, 8, 8);
     knot.translate(0, boxSize / 2 + ribbonHeight + 0.02, 0);
 
     // Merge all geometries
-    return mergeGeometries([boxGeom, ribbonX, ribbonZ, bowLoop1, bowLoop2, knot]);
+    return mergeGeometries([boxGeom, ...ribbons, ...bowLoops, knot]);
 }
 const geomGiftBox = createGiftBoxGeometry();
+
+// Sphere (configurable via config.js)
+function createSphereGeometry() {
+    const radius = 0.5;
+    const widthSegments = 32;
+    const heightSegments = 32;
+    return new THREE.SphereGeometry(radius, widthSegments, heightSegments);
+}
+const geomSphere = createSphereGeometry();
 
 function createSnowflakeGeometry() {
     const shape = new THREE.Shape();
