@@ -385,7 +385,9 @@ function getGeometryForType(type) {
         'star': geomStar,
         'heart': geomHeart,
         'snowflake': geomSnowflake,
-        'present': geomGiftBox
+        'present': geomGiftBox,
+        'sphere': geomSphere,
+        'circle': geomStar  // circles use star geometry
     };
 
     if (!geometries[type]) {

@@ -60,16 +60,13 @@ export const CONFIG = {
             }
         },
         {
-            type: 'circle',
+            type: 'sphere',
             count: 1000,
             scale: 0.25,
             color: 0xd9b100,
             emissive: 0x220011,
-            emissiveIntensity: 0.8,
+            emissiveIntensity: 0.7,
             materialType: 'glass',
-            materialOverrides: {
-                transmission: 0.8,
-            }
         },
         // {
         //     type: 'snowflake',
