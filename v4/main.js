@@ -28,13 +28,15 @@ const orthographicCamera = new THREE.OrthographicCamera(
     0.1,
     1000
 );
-// Position at isometric angle
+// Position at isometric angle, at similar distance from origin as perspective camera
 const angleRad = CONFIG.isometricAngle * Math.PI / 180;
-const isometricDistance = 50;
+const perspectiveDistance = Math.sqrt(
+    CONFIG.cameraX ** 2 + CONFIG.cameraY ** 2 + CONFIG.cameraZ ** 2
+);
 orthographicCamera.position.set(
     CONFIG.cameraX,
-    isometricDistance * Math.sin(angleRad) + CONFIG.cameraY,
-    isometricDistance * Math.cos(angleRad) + CONFIG.cameraZ
+    perspectiveDistance * Math.sin(angleRad),
+    perspectiveDistance * Math.cos(angleRad)
 );
 orthographicCamera.lookAt(0, 0, 0);
 
