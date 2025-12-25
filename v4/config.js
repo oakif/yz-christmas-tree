@@ -27,12 +27,16 @@
  * create separate object definitions.
  */
 export const CONFIG = {
-    // --- TREE APPEARANCE ---
+    // ========================================
+    // TREE GEOMETRY
+    // ========================================
     treeHeight: 40,
-    treeRadius: 18,
+    treeRadius: 14,
     treeYOffset: 3,        // Shift the entire tree up (+) or down (-)
 
-    // --- OBJECTS ---
+    // ========================================
+    // PARTICLES / OBJECTS
+    // ========================================
     objects: [
         {
             type: 'star',
@@ -94,58 +98,81 @@ export const CONFIG = {
         // }
     ],
 
-    // --- ANIMATION / PHYSICS ---
-    animationSpeed: 0.12,      // Unified speed for explosion spread and return (0.01 = slow, 0.2 = fast)
-    explosionForce: 120,       // Initial blast speed
-    explosionFriction: 0.97,   // Air resistance
-    idleFloatSpeed: 0.005,     // Wobble speed when idle
-    idleFloatAmount: 0.02,     // How much it wobbles
-
-    // --- PARALLAX ---
-    parallaxStrengthX: 1.2,    // Mouse Y -> rotation X
-    parallaxStrengthY: 2.0,    // Mouse X -> rotation Y
-    parallaxSmoothing: 0.05,   // How smooth the parallax follows (lower = smoother)
-    parallaxPositionStrengthX: 0.0, // Mouse X -> position movement strength (0 = disabled)
-    parallaxPositionStrengthY: 0,   // Mouse Y -> position movement strength (0 = disabled)
-    explodedParallaxStrength: 0, // Individual particle parallax when exploded
-
-    // --- CAMERA / VIEW ---
-    // Camera position (X, Y, Z) - adjust these for different viewing angles
+    // ========================================
+    // CAMERA & VIEW
+    // ========================================
+    // Camera position (X, Y, Z) - adjust for different viewing angles
     // For overhead view: increase Y (height), adjust Z (distance), keep X centered
     // Example: X=0, Y=25, Z=40 gives ~45° overhead angle
     cameraX: 0,
     cameraY: 25,
     cameraZ: 30,
 
-    // --- TIMING ---
-    holdDuration: 30000,        // Milliseconds before reforming
+    // View type for different states
+    viewType: 'isometric',           // Idle/returning: 'perspective' or 'isometric'
+    explodedViewType: 'perspective', // Exploded state: 'perspective' or 'isometric'
 
-    // --- EXPLOSION DISTRIBUTION ---
-    // When exploded, particles distribute in a hollow sphere (spherical shell)
-    explosionInnerRadius: 30,   // Inner radius - prevents particles too close to camera
-    explosionOuterRadius: 50,   // Outer radius - maximum distance from center
-    explosionCenterMode: 'tree', // 'camera' or 'tree' - where the explosion sphere is centered
-    explosionOffsetX: 0,        // X offset from the center point
-    explosionOffsetY: -3,        // Y offset from the center point
-    explosionOffsetZ: 0,        // Z offset from the center point
+    // Isometric view configuration
+    isometricZoom: 60,        // Zoom level (higher = closer)
+    isometricAngle: 35.26,    // Viewing angle in degrees (standard isometric is 35.26°)
 
-    // --- REWARD IMAGE ---
-    rewardImage: "",
-    imageDelay: 500,
+    // ========================================
+    // INTERACTION
+    // ========================================
+    reassembleOnClick: true,  // Click while exploded to reassemble immediately
+    resetMouseOnLeave: false, // Reset parallax to center when mouse leaves screen
 
-    // --- INTERACTION ---
-    reassembleOnClick: true,   // If true, clicking while exploded will reassemble immediately
-    resetMouseOnLeave: false,   // If true, reset parallax to center when mouse leaves screen; if false, freeze at last position
+    // ========================================
+    // ANIMATION & PHYSICS
+    // ========================================
+    // Idle animation
+    idleFloatSpeed: 0.005,    // Wobble speed when idle
+    idleFloatAmount: 0.02,    // Wobble magnitude
 
-    // --- BLOOM (GLOW EFFECT) ---
-    bloomStrength: 0.35,       // Reduced slightly
-    bloomRadius: 0.5,
-    bloomThreshold: 0.2,       // Raised threshold so only bright things bloom
+    // Explosion physics
+    animationSpeed: 0.12,     // Speed for explosion spread and return (0.01 = slow, 0.2 = fast)
+    holdDuration: 30000,      // Milliseconds before reforming
 
-    // --- TONE MAPPING ---
-    toneMappingExposure: 3.0,  // Higher = brighter scene (1.0-2.0 typical range)
+    // Parallax effect
+    parallaxStrengthX: 1.5,           // Mouse Y -> rotation X
+    parallaxStrengthY: 4.0,           // Mouse X -> rotation Y
+    parallaxSmoothing: 0.05,          // Smoothness (lower = smoother)
+    parallaxPositionStrengthX: 0.0,   // Mouse X -> position movement (0 = disabled)
+    parallaxPositionStrengthY: 0,     // Mouse Y -> position movement (0 = disabled)
+    explodedParallaxStrength: 0,      // Particle parallax when exploded
 
-    // --- LIGHTING SETUP ---
+    // ========================================
+    // EXPLOSION DISTRIBUTION
+    // ========================================
+    // Particles distribute in a hollow sphere (spherical shell)
+    explosionInnerRadius: 30,    // Inner radius (prevents particles too close to camera)
+    explosionOuterRadius: 50,    // Outer radius (maximum distance from center)
+    explosionCenterMode: 'tree', // Center point: 'camera' or 'tree'
+    explosionOffsetX: 0,         // X offset from center point
+    explosionOffsetY: -3,        // Y offset from center point
+    explosionOffsetZ: 0,         // Z offset from center point
+
+    // ========================================
+    // VISUAL EFFECTS
+    // ========================================
+    // Post-processing bloom
+    bloomStrength: 0.35,       // Intensity of glow effect
+    bloomRadius: 0.5,          // Size of glow
+    bloomThreshold: 0.2,       // Brightness threshold to glow
+
+    // Tone mapping (exposure/brightness)
+    toneMappingExposure: 4.0,  // Higher = brighter scene (1.0-2.0 typical range)
+
+    // Environment map (sky)
+    environmentMap: {
+        topColor: 0x0a0a15,      // Sky gradient top color (dark)
+        bottomColor: 0x1a1a2a,   // Sky gradient bottom color
+        brightness: 1.0,         // Overall brightness multiplier
+    },
+
+    // ========================================
+    // LIGHTING
+    // ========================================
     lighting: {
         ambient: {
             color: 0x404050,   // Cool gray tone
@@ -183,34 +210,27 @@ export const CONFIG = {
         },
     },
 
-    // --- ENVIRONMENT MAP ---
-    environmentMap: {
-        topColor: 0x0a0a15,      // Sky gradient top color (dark)
-        bottomColor: 0x1a1a2a,   // Sky gradient bottom color
-        brightness: 1.0,         // Overall brightness multiplier for env map
-    },
-
-    // --- RENDERING QUALITY ---
-    performanceMode: false,  // true = optimized fake glass, false = full refraction
-
-    // --- MATERIAL DEFAULTS ---
+    // ========================================
+    // MATERIALS
+    // ========================================
+    // Material defaults used by all materials
     materialDefaults: {
-        // For Physical materials (glass types)
-        transmission: 0.75,        // Moderate transparency
+        // Physical materials (glass types)
+        transmission: 0.75,        // Transparency level
         thickness: 0.5,            // Refraction thickness
-        roughness: 0.15,           // Default roughness
+        roughness: 0.15,           // Surface roughness
         clearcoat: 0.0,            // NO clearcoat by default (prevents mirror effect)
         clearcoatRoughness: 0.0,
-        ior: 1.5,                  // Glass IOR
+        ior: 1.5,                  // Refractive index (glass)
 
-        // For Standard materials (matte, satin, metallic)
+        // Standard materials (matte, satin, metallic)
         metalness: 0.2,
 
-        // Environment map
+        // Environment map reflections
         envMapIntensity: 1.0,
     },
 
-    // --- MATERIAL TYPE PRESETS ---
+    // Material type presets (use in particle definitions)
     materialPresets: {
         matte: {
             // Non-reflective, diffuse surface
@@ -264,4 +284,15 @@ export const CONFIG = {
             ior: 1.5,
         },
     },
+
+    // ========================================
+    // REWARD IMAGE
+    // ========================================
+    rewardImage: '',       // Path to image displayed on explosion (empty = disabled)
+    imageDelay: 500,       // Milliseconds before showing image after explosion
+
+    // ========================================
+    // RENDERING & PERFORMANCE
+    // ========================================
+    performanceMode: false,  // true = optimized fake glass, false = full physical refraction
 };

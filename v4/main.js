@@ -10,11 +10,36 @@ const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x050505, 0.015);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.x = CONFIG.cameraX;
-camera.position.y = CONFIG.cameraY;
-camera.position.z = CONFIG.cameraZ;
-camera.lookAt(0, 0, 0); // Point camera at tree center
+// Create perspective camera
+const perspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+perspectiveCamera.position.x = CONFIG.cameraX;
+perspectiveCamera.position.y = CONFIG.cameraY;
+perspectiveCamera.position.z = CONFIG.cameraZ;
+perspectiveCamera.lookAt(0, 0, 0);
+
+// Create orthographic camera for isometric view
+const aspect = window.innerWidth / window.innerHeight;
+const frustumSize = CONFIG.isometricZoom;
+const orthographicCamera = new THREE.OrthographicCamera(
+    frustumSize * aspect / -2,
+    frustumSize * aspect / 2,
+    frustumSize / 2,
+    frustumSize / -2,
+    0.1,
+    1000
+);
+// Position at isometric angle
+const angleRad = CONFIG.isometricAngle * Math.PI / 180;
+const isometricDistance = 50;
+orthographicCamera.position.set(
+    CONFIG.cameraX,
+    isometricDistance * Math.sin(angleRad) + CONFIG.cameraY,
+    isometricDistance * Math.cos(angleRad) + CONFIG.cameraZ
+);
+orthographicCamera.lookAt(0, 0, 0);
+
+// Select active camera based on configuration
+let camera = CONFIG.viewType === 'isometric' ? orthographicCamera : perspectiveCamera;
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -77,6 +102,22 @@ function createEnvironmentMap() {
 
 createEnvironmentMap();
 scene.environment = envMap;
+
+// --- CAMERA SWITCHING ---
+function updateCamera(newState) {
+    const targetViewType = (newState === 'EXPLODING')
+        ? CONFIG.explodedViewType
+        : CONFIG.viewType;
+
+    const newCamera = targetViewType === 'isometric'
+        ? orthographicCamera
+        : perspectiveCamera;
+
+    if (camera !== newCamera) {
+        camera = newCamera;
+        renderScene.camera = camera;
+    }
+}
 
 // --- SETUP IMAGE ---
 const imgElement = document.getElementById('reward-image');
@@ -729,6 +770,7 @@ function animate() {
     // Transition to IDLE when all particles have returned
     if (state === "RETURNING" && allReturned) {
         state = "IDLE";
+        updateCamera(state);
     }
 
     composer.render();
@@ -759,6 +801,7 @@ function triggerExplosion(event) {
         }
 
         state = "RETURNING";
+        updateCamera(state);
         // Don't set a timer here - we'll transition to IDLE based on position convergence
         return;
     }
@@ -773,6 +816,7 @@ function triggerExplosion(event) {
     }
 
     state = "EXPLODING";
+    updateCamera(state);
 
     // Reset individual parallax shifts
     particles.forEach(p => {
@@ -790,6 +834,7 @@ function triggerExplosion(event) {
             imgElement.classList.remove('visible');
         }
         state = "RETURNING";
+        updateCamera(state);
         // IDLE transition now happens automatically based on particle convergence
         returnTimer = null;
     }, CONFIG.holdDuration);
@@ -799,8 +844,20 @@ window.addEventListener('mousedown', triggerExplosion);
 window.addEventListener('touchstart', triggerExplosion, { passive: false });
 
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    const newAspect = window.innerWidth / window.innerHeight;
+
+    // Update perspective camera
+    perspectiveCamera.aspect = newAspect;
+    perspectiveCamera.updateProjectionMatrix();
+
+    // Update orthographic camera
+    const frustumSize = CONFIG.isometricZoom;
+    orthographicCamera.left = frustumSize * newAspect / -2;
+    orthographicCamera.right = frustumSize * newAspect / 2;
+    orthographicCamera.top = frustumSize / 2;
+    orthographicCamera.bottom = frustumSize / -2;
+    orthographicCamera.updateProjectionMatrix();
+
     renderer.setSize(window.innerWidth, window.innerHeight);
     composer.setSize(window.innerWidth, window.innerHeight);
 });
