@@ -259,19 +259,30 @@ function sampleTreePosition() {
     return new THREE.Vector3(x, y, z);
 }
 
-// --- EXPLOSION TARGET POSITIONS (rectangular prism distribution) ---
-function generateExplosionTargets(count) {
+// --- EXPLOSION TARGET POSITIONS (hollow sphere distribution) ---
+function generateExplosionTargets(count, center) {
     const targets = [];
-    const scale = CONFIG.explosionBoxScale;
-    const w = CONFIG.explosionBoxWidth * scale;
-    const h = CONFIG.explosionBoxHeight * scale;
-    const d = CONFIG.explosionBoxDepth * scale;
+    const innerR = CONFIG.explosionInnerRadius;
+    const outerR = CONFIG.explosionOuterRadius;
+
+    // Apply offset to center
+    const explosionCenter = new THREE.Vector3(
+        center.x + CONFIG.explosionOffsetX,
+        center.y + CONFIG.explosionOffsetY,
+        center.z + CONFIG.explosionOffsetZ
+    );
 
     for (let i = 0; i < count; i++) {
-        // Random distribution within the box
-        const x = (Math.random() - 0.5) * w;
-        const y = (Math.random() - 0.5) * h;
-        const z = (Math.random() - 0.5) * d;
+        // Uniform random point on spherical shell
+        const theta = Math.random() * Math.PI * 2; // Azimuthal angle (0 to 2π)
+        const phi = Math.acos(2 * Math.random() - 1); // Polar angle (uniform distribution)
+        const r = innerR + Math.random() * (outerR - innerR); // Random radius in shell
+
+        // Convert spherical to Cartesian coordinates (relative to center)
+        const x = explosionCenter.x + r * Math.sin(phi) * Math.cos(theta);
+        const y = explosionCenter.y + r * Math.sin(phi) * Math.sin(theta);
+        const z = explosionCenter.z + r * Math.cos(phi);
+
         targets.push(new THREE.Vector3(x, y, z));
     }
 
@@ -284,7 +295,12 @@ const treeGroup = new THREE.Group();
 scene.add(treeGroup);
 
 // Pre-generate explosion targets
-const explosionTargets = generateExplosionTargets(CONFIG.particleCount);
+// Determine explosion center based on mode
+const explosionCenter = CONFIG.explosionCenterMode === 'camera'
+    ? new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)
+    : new THREE.Vector3(0, 0, 0); // Tree center at origin
+
+const explosionTargets = generateExplosionTargets(CONFIG.particleCount, explosionCenter);
 
 for (let i = 0; i < CONFIG.particleCount; i++) {
     let mesh;

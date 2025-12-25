@@ -3,7 +3,7 @@ export const CONFIG = {
     particleCount: 2000,
     treeHeight: 40,
     treeRadius: 18,
-    treeYOffset: 0,        // Shift the entire tree up (+) or down (-)
+    treeYOffset: 3,        // Shift the entire tree up (+) or down (-)
 
     // --- OBJECT SIZES ---
     starScale: 1.2,        // Size multiplier for stars
@@ -15,7 +15,7 @@ export const CONFIG = {
     colorPresents: [0xff3333, 0x33ff33, 0x3333ff],
     colorHearts: 0xff0055,
     colorStar: 0xfffea8,   // Very subtle warm white
-    starEmissiveIntensity: 0.25, // How much stars glow (0 = no glow, 1 = full)
+    starEmissiveIntensity: 0.5, // How much stars glow (0 = no glow, 1 = full)
 
     // --- ANIMATION / PHYSICS ---
     animationSpeed: 0.12,      // Unified speed for explosion spread and return (0.01 = slow, 0.2 = fast)
@@ -38,17 +38,19 @@ export const CONFIG = {
     // Example: X=0, Y=25, Z=40 gives ~45° overhead angle
     cameraX: 0,
     cameraY: 25,
-    cameraZ: 40,
+    cameraZ: 30,
 
     // --- TIMING ---
     holdDuration: 15000,        // Milliseconds before reforming
 
     // --- EXPLOSION DISTRIBUTION ---
-    // When exploded, particles distribute in a rectangular prism
-    explosionBoxScale: 1.0,    // Multiplier for all explosion box dimensions (increase to spread more)
-    explosionBoxWidth: 80,     // Base width of explosion area
-    explosionBoxHeight: 60,    // Base height of explosion area
-    explosionBoxDepth: 60,     // Base depth of explosion area
+    // When exploded, particles distribute in a hollow sphere (spherical shell)
+    explosionInnerRadius: 30,   // Inner radius - prevents particles too close to camera
+    explosionOuterRadius: 60,   // Outer radius - maximum distance from center
+    explosionCenterMode: 'tree', // 'camera' or 'tree' - where the explosion sphere is centered
+    explosionOffsetX: 0,        // X offset from the center point
+    explosionOffsetY: -3,        // Y offset from the center point
+    explosionOffsetZ: 0,        // Z offset from the center point
 
     // --- REWARD IMAGE ---
     rewardImage: "",
