@@ -700,8 +700,11 @@ function animate() {
     const time = Date.now();
 
     // Parallax rotation and position of the tree group (always active)
-    targetRotation.x = mouse.y * CONFIG.parallaxStrengthX;
-    targetRotation.y = mouse.x * CONFIG.parallaxStrengthY;
+    // Use different strengths for exploded vs idle/returning states
+    const parallaxX = state === "EXPLODING" ? CONFIG.explodedParallaxStrengthX : CONFIG.parallaxStrengthX;
+    const parallaxY = state === "EXPLODING" ? CONFIG.explodedParallaxStrengthY : CONFIG.parallaxStrengthY;
+    targetRotation.x = mouse.y * parallaxX;
+    targetRotation.y = mouse.x * parallaxY;
     targetPosition.x = mouse.x * CONFIG.parallaxPositionStrengthX;
     targetPosition.y = mouse.y * CONFIG.parallaxPositionStrengthY;
 
