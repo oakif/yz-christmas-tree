@@ -133,13 +133,17 @@ export const CONFIG = {
     animationSpeed: 0.12,     // Speed for explosion spread and return (0.01 = slow, 0.2 = fast)
     holdDuration: 30000,      // Milliseconds before reforming
 
-    // Parallax effect
+    // Parallax effect (idle/returning state)
     parallaxStrengthX: 1.5,           // Mouse Y -> rotation X
     parallaxStrengthY: 4.0,           // Mouse X -> rotation Y
     parallaxSmoothing: 0.05,          // Smoothness (lower = smoother)
     parallaxPositionStrengthX: 0.0,   // Mouse X -> position movement (0 = disabled)
     parallaxPositionStrengthY: 0,     // Mouse Y -> position movement (0 = disabled)
-    explodedParallaxStrength: 0,      // Particle parallax when exploded
+
+    // Parallax effect (exploded state)
+    explodedParallaxStrengthX: 1.2,   // Mouse Y -> rotation X when exploded
+    explodedParallaxStrengthY: 1.2,   // Mouse X -> rotation Y when exploded
+    explodedParallaxStrength: 0,      // Individual particle parallax when exploded
 
     // ========================================
     // EXPLOSION DISTRIBUTION
