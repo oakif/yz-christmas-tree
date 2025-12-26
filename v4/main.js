@@ -910,6 +910,11 @@ gui.domElement.style.top = '10px';
 gui.domElement.style.right = '10px';
 gui.domElement.style.zIndex = '10000';
 
+// Show/hide GUI based on config setting
+if (!CONFIG.showGUI) {
+    gui.domElement.style.display = 'none';
+}
+
 // Helper to convert hex number to hex string for dat.GUI
 function hexToString(hex) {
     return '#' + hex.toString(16).padStart(6, '0');

@@ -169,6 +169,7 @@ export const CONFIG = {
     // ========================================
     ui: {
         visibility: {
+            showGUI: true,              // Show/hide dat.GUI control panel
             showTreeParticles: true,  // Show/hide tree particles
             showFPS: false,             // Show FPS counter
         },
@@ -431,6 +432,9 @@ export const CONFIG = {
     get lighting() { return this.rendering.lighting; },
 
     // UI & Performance - Visibility
+    get showGUI() { return this.ui.visibility.showGUI; },
+    set showGUI(v) { this.ui.visibility.showGUI = v; },
+
     get showTreeParticles() { return this.ui.visibility.showTreeParticles; },
     set showTreeParticles(v) { this.ui.visibility.showTreeParticles = v; },
 
