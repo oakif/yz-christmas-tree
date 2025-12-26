@@ -697,6 +697,76 @@ const topGlow = new THREE.PointLight(
 topGlow.position.set(0, CONFIG.treeHeight / 2 + 5, 0);
 scene.add(topGlow);
 
+// --- TEST MATERIAL SYSTEM ---
+let testMesh = null;
+
+const testMaterialConfig = {
+    visible: false,
+    shape: 'star',
+    materialType: 'glass',
+    scale: 2.0,
+    color: '#ffffff',
+    emissive: '#000000',
+    emissiveIntensity: 0.0,
+    transmission: 0.9,
+    thickness: 10.0,
+    roughness: 0.15,
+    metalness: 0.0,
+    clearcoat: 0.0,
+    clearcoatRoughness: 0.0,
+    ior: 1.5,
+    envMapIntensity: 1.5,
+};
+
+function createTestMesh() {
+    if (testMesh) {
+        scene.remove(testMesh);
+        testMesh.geometry.dispose();
+        testMesh.material.dispose();
+        testMesh = null;
+    }
+
+    const geometry = getGeometryForType(testMaterialConfig.shape);
+
+    const materialDef = {
+        type: testMaterialConfig.shape,
+        color: parseInt(testMaterialConfig.color.replace('#', ''), 16),
+        emissive: parseInt(testMaterialConfig.emissive.replace('#', ''), 16),
+        emissiveIntensity: testMaterialConfig.emissiveIntensity,
+        materialType: testMaterialConfig.materialType,
+        materialOverrides: {
+            transmission: testMaterialConfig.transmission,
+            thickness: testMaterialConfig.thickness,
+            roughness: testMaterialConfig.roughness,
+            metalness: testMaterialConfig.metalness,
+            clearcoat: testMaterialConfig.clearcoat,
+            clearcoatRoughness: testMaterialConfig.clearcoatRoughness,
+            ior: testMaterialConfig.ior,
+            envMapIntensity: testMaterialConfig.envMapIntensity,
+        }
+    };
+
+    materialCache.clear();
+    const material = getMaterialFromDefinition(materialDef);
+
+    testMesh = new THREE.Mesh(geometry, material);
+    testMesh.scale.setScalar(testMaterialConfig.scale);
+    testMesh.position.set(0, 0, 0);
+
+    testMesh.userData = {
+        originalPos: new THREE.Vector3(0, 0, 0),
+        explosionTarget: new THREE.Vector3(0, 0, 0),
+        velocity: new THREE.Vector3(0, 0, 0),
+        rotSpeed: { x: 0.01, y: 0.01, z: 0 },
+        individualParallaxShift: new THREE.Vector3(0, 0, 0),
+        baseParallaxSensitivity: 0,
+        isTestMesh: true
+    };
+
+    scene.add(testMesh);
+    testMesh.visible = testMaterialConfig.visible;
+}
+
 // --- DAT.GUI FOR ALL CONFIG SETTINGS ---
 const gui = new GUI();
 document.body.appendChild(gui.domElement);
@@ -807,32 +877,7 @@ const guiControls = {
     imageDelay: CONFIG.imageDelay,
 
     // Performance
-    performanceMode: CONFIG.performanceMode,
-
-    // Material experiment settings (glass/frosted glass)
-    glassTransmission: 0.9,
-    glassThickness: 10.0,
-    glassRoughness: 0.05,
-    glassClearcoat: 0.2,
-    glassClearcoatRoughness: 0.3,
-    glassReflectivity: 0.8,
-    glassIOR: 1.5,
-    glassEnvMapIntensity: 1.5,
-    glassColor: '#fffee8',
-    frostedTransmission: 0.8,
-    frostedThickness: 5.0,
-    frostedRoughness: 0.4,
-    frostedClearcoat: 0.15,
-    frostedClearcoatRoughness: 0.5,
-    frostedReflectivity: 0.5,
-    frostedColor: '#ff0055',
-    frostedEmissive: '#220011',
-    frostedEmissiveIntensity: 0.3,
-
-    // Actions
-    applyMaterialChanges: function() {
-        refreshAllMaterials();
-    }
+    performanceMode: CONFIG.performanceMode
 };
 
 // === TREE GEOMETRY ===
@@ -1002,87 +1047,83 @@ envFolder.addColor(guiControls, 'envBottomColor').name('Sky Bottom').onChange(va
     scene.environment = envMap;
 });
 
-// === LIGHTING - AMBIENT ===
-const ambientFolder = gui.addFolder('Lighting - Ambient');
-ambientFolder.addColor(guiControls, 'ambientColor').name('Color').onChange(val => {
+// === LIGHTING (CONSOLIDATED) ===
+const lightingFolder = gui.addFolder('Lighting');
+
+const ambientSubfolder = lightingFolder.addFolder('Ambient');
+ambientSubfolder.addColor(guiControls, 'ambientColor').name('Color').onChange(val => {
     ambientLight.color.setHex(stringToHex(val));
     CONFIG.lighting.ambient.color = stringToHex(val);
 });
-ambientFolder.add(guiControls, 'ambientIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+ambientSubfolder.add(guiControls, 'ambientIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
     ambientLight.intensity = val;
     CONFIG.lighting.ambient.intensity = val;
 });
 
-// === LIGHTING - HEMISPHERE ===
-const hemiFolder = gui.addFolder('Lighting - Hemisphere');
-hemiFolder.addColor(guiControls, 'hemiSkyColor').name('Sky Color').onChange(val => {
+const hemiSubfolder = lightingFolder.addFolder('Hemisphere');
+hemiSubfolder.addColor(guiControls, 'hemiSkyColor').name('Sky Color').onChange(val => {
     hemiLight.color.setHex(stringToHex(val));
     CONFIG.lighting.hemisphere.skyColor = stringToHex(val);
 });
-hemiFolder.addColor(guiControls, 'hemiGroundColor').name('Ground Color').onChange(val => {
+hemiSubfolder.addColor(guiControls, 'hemiGroundColor').name('Ground Color').onChange(val => {
     hemiLight.groundColor.setHex(stringToHex(val));
     CONFIG.lighting.hemisphere.groundColor = stringToHex(val);
 });
-hemiFolder.add(guiControls, 'hemiIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+hemiSubfolder.add(guiControls, 'hemiIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
     hemiLight.intensity = val;
     CONFIG.lighting.hemisphere.intensity = val;
 });
 
-// === LIGHTING - KEY LIGHT ===
-const keyLightFolder = gui.addFolder('Lighting - Key Light');
-keyLightFolder.addColor(guiControls, 'keyLightColor').name('Color').onChange(val => {
+const keyLightSubfolder = lightingFolder.addFolder('Key Light');
+keyLightSubfolder.addColor(guiControls, 'keyLightColor').name('Color').onChange(val => {
     keyLight.color.setHex(stringToHex(val));
     CONFIG.lighting.keyLight.color = stringToHex(val);
 });
-keyLightFolder.add(guiControls, 'keyLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+keyLightSubfolder.add(guiControls, 'keyLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
     keyLight.intensity = val;
     CONFIG.lighting.keyLight.intensity = val;
 });
 
-// === LIGHTING - FILL LIGHT ===
-const fillLightFolder = gui.addFolder('Lighting - Fill Light');
-fillLightFolder.addColor(guiControls, 'fillLightColor').name('Color').onChange(val => {
+const fillLightSubfolder = lightingFolder.addFolder('Fill Light');
+fillLightSubfolder.addColor(guiControls, 'fillLightColor').name('Color').onChange(val => {
     fillLight.color.setHex(stringToHex(val));
     CONFIG.lighting.fillLight.color = stringToHex(val);
 });
-fillLightFolder.add(guiControls, 'fillLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+fillLightSubfolder.add(guiControls, 'fillLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
     fillLight.intensity = val;
     CONFIG.lighting.fillLight.intensity = val;
 });
 
-// === LIGHTING - RIM LIGHT ===
-const rimLightFolder = gui.addFolder('Lighting - Rim Light');
-rimLightFolder.addColor(guiControls, 'rimLightColor').name('Color').onChange(val => {
+const rimLightSubfolder = lightingFolder.addFolder('Rim Light');
+rimLightSubfolder.addColor(guiControls, 'rimLightColor').name('Color').onChange(val => {
     rimLight.color.setHex(stringToHex(val));
     CONFIG.lighting.rimLight.color = stringToHex(val);
 });
-rimLightFolder.add(guiControls, 'rimLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+rimLightSubfolder.add(guiControls, 'rimLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
     rimLight.intensity = val;
     CONFIG.lighting.rimLight.intensity = val;
 });
 
-// === LIGHTING - OVERHEAD LIGHT ===
-const overheadFolder = gui.addFolder('Lighting - Overhead Light');
-overheadFolder.addColor(guiControls, 'overheadLightColor').name('Color').onChange(val => {
+const overheadSubfolder = lightingFolder.addFolder('Overhead Light');
+overheadSubfolder.addColor(guiControls, 'overheadLightColor').name('Color').onChange(val => {
     overheadLight.color.setHex(stringToHex(val));
     CONFIG.lighting.overheadLight.color = stringToHex(val);
 });
-overheadFolder.add(guiControls, 'overheadLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+overheadSubfolder.add(guiControls, 'overheadLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
     overheadLight.intensity = val;
     CONFIG.lighting.overheadLight.intensity = val;
 });
 
-// === LIGHTING - TOP GLOW ===
-const topGlowFolder = gui.addFolder('Lighting - Top Glow');
-topGlowFolder.addColor(guiControls, 'topGlowColor').name('Color').onChange(val => {
+const topGlowSubfolder = lightingFolder.addFolder('Top Glow');
+topGlowSubfolder.addColor(guiControls, 'topGlowColor').name('Color').onChange(val => {
     topGlow.color.setHex(stringToHex(val));
     CONFIG.lighting.topGlow.color = stringToHex(val);
 });
-topGlowFolder.add(guiControls, 'topGlowIntensity', 0, 10, 0.1).name('Intensity').onChange(val => {
+topGlowSubfolder.add(guiControls, 'topGlowIntensity', 0, 10, 0.1).name('Intensity').onChange(val => {
     topGlow.intensity = val;
     CONFIG.lighting.topGlow.intensity = val;
 });
-topGlowFolder.add(guiControls, 'topGlowRange', 0, 100, 1).name('Range').onChange(val => {
+topGlowSubfolder.add(guiControls, 'topGlowRange', 0, 100, 1).name('Range').onChange(val => {
     topGlow.distance = val;
     CONFIG.lighting.topGlow.range = val;
 });
@@ -1099,94 +1140,130 @@ perfFolder.add(guiControls, 'performanceMode').name('Performance Mode').onChange
     CONFIG.performanceMode = val;
 });
 
-// === MATERIAL EXPERIMENTS ===
-const materialExpFolder = gui.addFolder('Material Experiments');
+// === VISIBILITY CONTROLS ===
+const visibilityFolder = gui.addFolder('Visibility Controls');
 
-// Glass Material folder
-const glassFolder = materialExpFolder.addFolder('Glass Material (Stars)');
-glassFolder.add(guiControls, 'glassTransmission', 0, 1, 0.01).name('Transmission');
-glassFolder.add(guiControls, 'glassThickness', 0, 50, 0.5).name('Thickness');
-glassFolder.add(guiControls, 'glassRoughness', 0, 1, 0.01).name('Roughness');
-glassFolder.add(guiControls, 'glassClearcoat', 0, 1, 0.01).name('Clearcoat');
-glassFolder.add(guiControls, 'glassClearcoatRoughness', 0, 1, 0.01).name('Clearcoat Roughness');
-glassFolder.add(guiControls, 'glassReflectivity', 0, 1, 0.01).name('Reflectivity');
-glassFolder.add(guiControls, 'glassIOR', 1.0, 2.5, 0.01).name('IOR');
-glassFolder.add(guiControls, 'glassEnvMapIntensity', 0, 5, 0.1).name('Env Map Intensity');
-glassFolder.addColor(guiControls, 'glassColor').name('Color');
-glassFolder.open();
-
-// Frosted Glass Material folder
-const frostedFolder = materialExpFolder.addFolder('Frosted Glass (Hearts)');
-frostedFolder.add(guiControls, 'frostedTransmission', 0, 1, 0.01).name('Transmission');
-frostedFolder.add(guiControls, 'frostedThickness', 0, 50, 0.5).name('Thickness');
-frostedFolder.add(guiControls, 'frostedRoughness', 0, 1, 0.01).name('Roughness');
-frostedFolder.add(guiControls, 'frostedClearcoat', 0, 1, 0.01).name('Clearcoat');
-frostedFolder.add(guiControls, 'frostedClearcoatRoughness', 0, 1, 0.01).name('Clearcoat Roughness');
-frostedFolder.add(guiControls, 'frostedReflectivity', 0, 1, 0.01).name('Reflectivity');
-frostedFolder.addColor(guiControls, 'frostedColor').name('Color');
-frostedFolder.addColor(guiControls, 'frostedEmissive').name('Emissive');
-frostedFolder.add(guiControls, 'frostedEmissiveIntensity', 0, 1, 0.01).name('Emissive Intensity');
-frostedFolder.open();
-
-// Apply button for material changes
-materialExpFolder.add(guiControls, 'applyMaterialChanges').name('🔄 Apply Material Changes');
-
-// Function to refresh materials with current GUI values
-function refreshAllMaterials() {
-    materialCache.clear();
-
-    particles.forEach((particle, index) => {
-        // Find which object type this particle belongs to
-        let currentIndex = 0;
-        let objectDef = null;
-
-        for (const obj of CONFIG.objects) {
-            if (index < currentIndex + obj.count) {
-                objectDef = obj;
-                break;
-            }
-            currentIndex += obj.count;
-        }
-
-        if (!objectDef) return;
-
-        // Create modified definition with GUI values
-        const modifiedDef = { ...objectDef };
-
-        if (objectDef.materialType === 'glass') {
-            modifiedDef.color = parseInt(guiControls.glassColor.replace('#', ''), 16);
-            modifiedDef.materialOverrides = {
-                transmission: guiControls.glassTransmission,
-                thickness: guiControls.glassThickness,
-                roughness: guiControls.glassRoughness,
-                clearcoat: guiControls.glassClearcoat,
-                clearcoatRoughness: guiControls.glassClearcoatRoughness,
-                reflectivity: guiControls.glassReflectivity,
-                ior: guiControls.glassIOR,
-                envMapIntensity: guiControls.glassEnvMapIntensity,
-            };
-        } else if (objectDef.materialType === 'frostedGlass') {
-            modifiedDef.color = parseInt(guiControls.frostedColor.replace('#', ''), 16);
-            modifiedDef.emissive = parseInt(guiControls.frostedEmissive.replace('#', ''), 16);
-            modifiedDef.emissiveIntensity = guiControls.frostedEmissiveIntensity;
-            modifiedDef.materialOverrides = {
-                transmission: guiControls.frostedTransmission,
-                thickness: guiControls.frostedThickness,
-                roughness: guiControls.frostedRoughness,
-                clearcoat: guiControls.frostedClearcoat,
-                clearcoatRoughness: guiControls.frostedClearcoatRoughness,
-                reflectivity: guiControls.frostedReflectivity,
-            };
-        }
-
-        // Dispose old material and create new one
-        const oldMaterial = particle.material;
-        particle.material = getMaterialFromDefinition(modifiedDef);
-        oldMaterial.dispose();
+guiControls.showTreeParticles = true;
+visibilityFolder.add(guiControls, 'showTreeParticles')
+    .name('Show Tree Particles')
+    .onChange(val => {
+        treeGroup.visible = val;
     });
 
-    console.log('Materials refreshed with new settings!');
+guiControls.showTestMaterial = false;
+visibilityFolder.add(guiControls, 'showTestMaterial')
+    .name('Show Test Material')
+    .onChange(val => {
+        testMaterialConfig.visible = val;
+        if (testMesh) {
+            testMesh.visible = val;
+        } else if (val) {
+            createTestMesh();
+        }
+    });
+
+visibilityFolder.open();
+
+// === TEST MATERIAL (DEBUG) ===
+const testMatFolder = gui.addFolder('Test Material (Debug)');
+
+// Add test material controls to guiControls
+Object.assign(guiControls, {
+    testShape: testMaterialConfig.shape,
+    testMaterialType: testMaterialConfig.materialType,
+    testScale: testMaterialConfig.scale,
+    testColor: testMaterialConfig.color,
+    testEmissive: testMaterialConfig.emissive,
+    testEmissiveIntensity: testMaterialConfig.emissiveIntensity,
+    testTransmission: testMaterialConfig.transmission,
+    testThickness: testMaterialConfig.thickness,
+    testRoughness: testMaterialConfig.roughness,
+    testMetalness: testMaterialConfig.metalness,
+    testClearcoat: testMaterialConfig.clearcoat,
+    testClearcoatRoughness: testMaterialConfig.clearcoatRoughness,
+    testIOR: testMaterialConfig.ior,
+    testEnvMapIntensity: testMaterialConfig.envMapIntensity,
+});
+
+// Debounced rebuild function for smoother updates
+let rebuildTimeout = null;
+function debouncedRebuildTestMesh() {
+    if (rebuildTimeout) {
+        clearTimeout(rebuildTimeout);
+    }
+    rebuildTimeout = setTimeout(() => {
+        testMaterialConfig.shape = guiControls.testShape;
+        testMaterialConfig.materialType = guiControls.testMaterialType;
+        testMaterialConfig.scale = guiControls.testScale;
+        testMaterialConfig.color = guiControls.testColor;
+        testMaterialConfig.emissive = guiControls.testEmissive;
+        testMaterialConfig.emissiveIntensity = guiControls.testEmissiveIntensity;
+        testMaterialConfig.transmission = guiControls.testTransmission;
+        testMaterialConfig.thickness = guiControls.testThickness;
+        testMaterialConfig.roughness = guiControls.testRoughness;
+        testMaterialConfig.metalness = guiControls.testMetalness;
+        testMaterialConfig.clearcoat = guiControls.testClearcoat;
+        testMaterialConfig.clearcoatRoughness = guiControls.testClearcoatRoughness;
+        testMaterialConfig.ior = guiControls.testIOR;
+        testMaterialConfig.envMapIntensity = guiControls.testEnvMapIntensity;
+
+        if (testMesh && testMaterialConfig.visible) {
+            createTestMesh();
+        }
+    }, 500);
 }
+
+// Basic properties with auto-update
+testMatFolder.add(guiControls, 'testShape', ['star', 'heart', 'snowflake', 'present', 'sphere'])
+    .name('Shape')
+    .onChange(debouncedRebuildTestMesh);
+testMatFolder.add(guiControls, 'testMaterialType', ['matte', 'satin', 'metallic', 'glass', 'frostedGlass'])
+    .name('Material Type')
+    .onChange(debouncedRebuildTestMesh);
+testMatFolder.add(guiControls, 'testScale', 0.1, 10, 0.1)
+    .name('Scale')
+    .onChange(debouncedRebuildTestMesh);
+
+// Colors with auto-update
+testMatFolder.addColor(guiControls, 'testColor')
+    .name('Base Color')
+    .onChange(debouncedRebuildTestMesh);
+testMatFolder.addColor(guiControls, 'testEmissive')
+    .name('Emissive Color')
+    .onChange(debouncedRebuildTestMesh);
+testMatFolder.add(guiControls, 'testEmissiveIntensity', 0, 2, 0.01)
+    .name('Emissive Intensity')
+    .onChange(debouncedRebuildTestMesh);
+
+// Physical properties with auto-update
+const testPhysicalFolder = testMatFolder.addFolder('Physical Properties');
+testPhysicalFolder.add(guiControls, 'testTransmission', 0, 1, 0.01)
+    .name('Transmission')
+    .onChange(debouncedRebuildTestMesh);
+testPhysicalFolder.add(guiControls, 'testThickness', 0, 50, 0.5)
+    .name('Thickness')
+    .onChange(debouncedRebuildTestMesh);
+testPhysicalFolder.add(guiControls, 'testRoughness', 0, 1, 0.01)
+    .name('Roughness')
+    .onChange(debouncedRebuildTestMesh);
+testPhysicalFolder.add(guiControls, 'testMetalness', 0, 1, 0.01)
+    .name('Metalness')
+    .onChange(debouncedRebuildTestMesh);
+testPhysicalFolder.add(guiControls, 'testClearcoat', 0, 1, 0.01)
+    .name('Clearcoat')
+    .onChange(debouncedRebuildTestMesh);
+testPhysicalFolder.add(guiControls, 'testClearcoatRoughness', 0, 1, 0.01)
+    .name('Clearcoat Roughness')
+    .onChange(debouncedRebuildTestMesh);
+testPhysicalFolder.add(guiControls, 'testIOR', 1.0, 2.5, 0.01)
+    .name('IOR')
+    .onChange(debouncedRebuildTestMesh);
+testPhysicalFolder.add(guiControls, 'testEnvMapIntensity', 0, 5, 0.1)
+    .name('Env Map Intensity')
+    .onChange(debouncedRebuildTestMesh);
+testPhysicalFolder.open();
+
+testMatFolder.open();
 
 // --- MOUSE PARALLAX ---
 const mouse = new THREE.Vector2(0, 0);
@@ -1334,6 +1411,13 @@ function animate() {
             }
         }
     });
+
+    // Test mesh rotation (if visible)
+    if (testMesh && testMesh.visible && testMesh.userData.isTestMesh) {
+        testMesh.rotation.x += testMesh.userData.rotSpeed.x;
+        testMesh.rotation.y += testMesh.userData.rotSpeed.y;
+        testMesh.rotation.z += testMesh.userData.rotSpeed.z;
+    }
 
     // Transition to IDLE when all particles have returned
     if (state === "RETURNING" && allReturned) {
