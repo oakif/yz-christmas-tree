@@ -212,6 +212,13 @@ export const CONFIG = {
             materialType: 'satin',
         },
         {
+            type: 'star',
+            count: 50,
+            scale: 1.0,
+            color: 0xfffee8,
+            materialType: 'metallic',
+        },
+        {
             type: 'heart',
             count: 800,
             scale: 0.8,
