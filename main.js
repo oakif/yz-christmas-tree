@@ -132,6 +132,7 @@ const textureLoader = new THREE.TextureLoader();
 // Multi-image state
 let showcaseTextures = [];
 let showcaseCurrentIndex = 0;
+let showcaseLastShownIndex = -1;
 let showcaseImagesLoaded = false;
 
 // Create rectangular vignette alpha map using canvas
@@ -260,17 +261,24 @@ function initializeShowcaseBox(texture) {
 function getNextShowcaseImage() {
     if (showcaseTextures.length === 0) return null;
 
-    let texture;
+    let index;
     if (CONFIG.showcase.displayMode === 'random') {
-        const randomIndex = Math.floor(Math.random() * showcaseTextures.length);
-        texture = showcaseTextures[randomIndex];
+        // Pick random index, avoiding the last shown image if possible
+        if (showcaseTextures.length === 1) {
+            index = 0;
+        } else {
+            do {
+                index = Math.floor(Math.random() * showcaseTextures.length);
+            } while (index === showcaseLastShownIndex);
+        }
     } else {
         // Sequential mode
-        texture = showcaseTextures[showcaseCurrentIndex];
+        index = showcaseCurrentIndex;
         showcaseCurrentIndex = (showcaseCurrentIndex + 1) % showcaseTextures.length;
     }
 
-    return texture;
+    showcaseLastShownIndex = index;
+    return showcaseTextures[index];
 }
 
 // Update showcase box texture and resize
