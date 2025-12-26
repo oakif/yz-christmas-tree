@@ -169,7 +169,7 @@ export const CONFIG = {
     // ========================================
     ui: {
         visibility: {
-            showGUI: true,              // Show/hide dat.GUI control panel
+            showGUI: false,              // Show/hide dat.GUI control panel
             showTreeParticles: true,  // Show/hide tree particles
             showFPS: false,             // Show FPS counter
         },
@@ -183,7 +183,7 @@ export const CONFIG = {
     // 6. REWARD IMAGE
     // ========================================
     reward: {
-        image: '',       // Path to image displayed on explosion (empty = disabled)
+        image: './images/cat.jpeg',       // Path to image displayed on explosion (empty = disabled)
         delay: 500,      // Milliseconds before showing image after explosion
     },
 
