@@ -190,7 +190,6 @@ export const CONFIG = {
         box: {
             maxDimension: 35,            // Max width or height (should be < explosionInnerRadius)
             thickness: 2,                // Depth of the box
-            backColor: 0x222222,         // Solid color for back and sides
             backColor: 0x333333,         // Solid color for back and sides
             borderRadius: 20,           // Rounded corner radius (0 = sharp corners)
         },
@@ -198,12 +197,18 @@ export const CONFIG = {
         // Animation speeds
         animation: {
             scaleSpeed: 0.12,            // Tied to explosion speed - controls zoom in/out
+            fadeSpeed: 0.08,             // How quickly image fades in/out
         },
 
+        // Parallax effect (lag when mouse moves, slowly returns to face viewer)
         parallax: {
             rotationStrength: 0.5,       // How much rotation offset when mouse moves
+            smoothing: 0.2,             // How slowly it returns to face viewer (lower = slower)
         },
 
+        // Visual effects
+        effects: {
+            edgeSoftness: 0.4,           // Vignette strength: edge fade to transparent (0 = sharp, 1 = very soft)
         },
     },
 
