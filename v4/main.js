@@ -194,20 +194,15 @@ function createVignetteAlphaMap(edgeSoftness) {
 function initializeShowcaseBox(texture) {
     const imgWidth = texture.image.width;
     const imgHeight = texture.image.height;
-    const aspectRatio = imgWidth / imgHeight;
 
-    // Calculate box dimensions based on max dimension
-    const maxDim = CONFIG.showcase.box.maxDimension;
-    let boxWidth, boxHeight;
-    if (aspectRatio >= 1) {
-        // Landscape or square
-        boxWidth = maxDim;
-        boxHeight = maxDim / aspectRatio;
-    } else {
-        // Portrait
-        boxHeight = maxDim;
-        boxWidth = maxDim * aspectRatio;
-    }
+    // Calculate box dimensions based on max width/height constraints
+    const maxW = CONFIG.showcase.box.maxWidth;
+    const maxH = CONFIG.showcase.box.maxHeight;
+    const scaleW = maxW / imgWidth;
+    const scaleH = maxH / imgHeight;
+    const scale = Math.min(scaleW, scaleH);
+    const boxWidth = imgWidth * scale;
+    const boxHeight = imgHeight * scale;
     const boxDepth = CONFIG.showcase.box.thickness;
 
     // Create box geometry
@@ -296,17 +291,14 @@ function updateShowcaseBoxTexture(texture) {
     // Recalculate aspect ratio and resize box if needed
     const imgWidth = texture.image.width;
     const imgHeight = texture.image.height;
-    const aspectRatio = imgWidth / imgHeight;
 
-    const maxDim = CONFIG.showcase.box.maxDimension;
-    let boxWidth, boxHeight;
-    if (aspectRatio >= 1) {
-        boxWidth = maxDim;
-        boxHeight = maxDim / aspectRatio;
-    } else {
-        boxHeight = maxDim;
-        boxWidth = maxDim * aspectRatio;
-    }
+    const maxW = CONFIG.showcase.box.maxWidth;
+    const maxH = CONFIG.showcase.box.maxHeight;
+    const scaleW = maxW / imgWidth;
+    const scaleH = maxH / imgHeight;
+    const scale = Math.min(scaleW, scaleH);
+    const boxWidth = imgWidth * scale;
+    const boxHeight = imgHeight * scale;
 
     // Update geometry by replacing it
     const boxDepth = CONFIG.showcase.box.thickness;
