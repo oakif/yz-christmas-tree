@@ -698,13 +698,14 @@ topGlow.position.set(0, CONFIG.treeHeight / 2 + 5, 0);
 scene.add(topGlow);
 
 // --- TEST MATERIAL SYSTEM ---
-let testMesh = null;
+// Test objects that replace the tree, using the same distribution and animation logic
+const testParticles = [];
 
-const testMaterialConfig = {
-    visible: false,
+// Shared configuration for all test objects
+const testObjectConfig = {
     shape: 'star',
     materialType: 'glass',
-    scale: 2.0,
+    scale: 1.0,
     color: '#ffffff',
     emissive: '#000000',
     emissiveIntensity: 0.0,
@@ -718,53 +719,111 @@ const testMaterialConfig = {
     envMapIntensity: 1.5,
 };
 
-function createTestMesh() {
-    if (testMesh) {
-        scene.remove(testMesh);
-        testMesh.geometry.dispose();
-        testMesh.material.dispose();
-        testMesh = null;
-    }
-
-    const geometry = getGeometryForType(testMaterialConfig.shape);
+function createTestParticle(explosionTarget) {
+    const geometry = getGeometryForType(testObjectConfig.shape);
 
     const materialDef = {
-        type: testMaterialConfig.shape,
-        color: parseInt(testMaterialConfig.color.replace('#', ''), 16),
-        emissive: parseInt(testMaterialConfig.emissive.replace('#', ''), 16),
-        emissiveIntensity: testMaterialConfig.emissiveIntensity,
-        materialType: testMaterialConfig.materialType,
+        type: testObjectConfig.shape,
+        color: parseInt(testObjectConfig.color.replace('#', ''), 16),
+        emissive: parseInt(testObjectConfig.emissive.replace('#', ''), 16),
+        emissiveIntensity: testObjectConfig.emissiveIntensity,
+        materialType: testObjectConfig.materialType,
         materialOverrides: {
-            transmission: testMaterialConfig.transmission,
-            thickness: testMaterialConfig.thickness,
-            roughness: testMaterialConfig.roughness,
-            metalness: testMaterialConfig.metalness,
-            clearcoat: testMaterialConfig.clearcoat,
-            clearcoatRoughness: testMaterialConfig.clearcoatRoughness,
-            ior: testMaterialConfig.ior,
-            envMapIntensity: testMaterialConfig.envMapIntensity,
+            transmission: testObjectConfig.transmission,
+            thickness: testObjectConfig.thickness,
+            roughness: testObjectConfig.roughness,
+            metalness: testObjectConfig.metalness,
+            clearcoat: testObjectConfig.clearcoat,
+            clearcoatRoughness: testObjectConfig.clearcoatRoughness,
+            ior: testObjectConfig.ior,
+            envMapIntensity: testObjectConfig.envMapIntensity,
         }
     };
 
     materialCache.clear();
     const material = getMaterialFromDefinition(materialDef);
 
-    testMesh = new THREE.Mesh(geometry, material);
-    testMesh.scale.setScalar(testMaterialConfig.scale);
-    testMesh.position.set(0, 0, 0);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.scale.setScalar(testObjectConfig.scale);
 
-    testMesh.userData = {
-        originalPos: new THREE.Vector3(0, 0, 0),
-        explosionTarget: new THREE.Vector3(0, 0, 0),
+    // Use the same tree position sampling as the original tree
+    const pos = sampleTreePosition();
+    mesh.position.copy(pos);
+
+    // Same userData structure as tree particles
+    mesh.userData = {
+        originalPos: pos.clone(),
+        explosionTarget: explosionTarget,
         velocity: new THREE.Vector3(0, 0, 0),
-        rotSpeed: { x: 0.01, y: 0.01, z: 0 },
+        rotSpeed: {
+            x: (Math.random() - 0.5) * 0.02,
+            y: (Math.random() - 0.5) * 0.02,
+            z: (Math.random() - 0.5) * 0.02
+        },
         individualParallaxShift: new THREE.Vector3(0, 0, 0),
-        baseParallaxSensitivity: 0,
-        isTestMesh: true
+        baseParallaxSensitivity: 0.5 + Math.random() * 1.0
     };
 
-    scene.add(testMesh);
-    testMesh.visible = testMaterialConfig.visible;
+    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+
+    treeGroup.add(mesh);
+    return mesh;
+}
+
+function setTestObjectCount(count) {
+    const currentCount = testParticles.length;
+
+    // Pre-generate explosion targets for all particles
+    const explosionCenter = CONFIG.explosionCenterMode === 'camera'
+        ? new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)
+        : new THREE.Vector3(0, 0, 0);
+    const explosionTargets = generateExplosionTargets(count, explosionCenter);
+
+    if (count > currentCount) {
+        // Add new particles
+        for (let i = currentCount; i < count; i++) {
+            const mesh = createTestParticle(explosionTargets[i]);
+            testParticles.push(mesh);
+        }
+    } else if (count < currentCount) {
+        // Remove excess particles
+        for (let i = currentCount - 1; i >= count; i--) {
+            const mesh = testParticles[i];
+            treeGroup.remove(mesh);
+            mesh.geometry.dispose();
+            mesh.material.dispose();
+        }
+        testParticles.length = count;
+    }
+
+    // Update explosion targets for all particles
+    testParticles.forEach((mesh, index) => {
+        mesh.userData.explosionTarget = explosionTargets[index];
+    });
+}
+
+function rebuildAllTestParticles() {
+    const count = testParticles.length;
+
+    // Pre-generate explosion targets
+    const explosionCenter = CONFIG.explosionCenterMode === 'camera'
+        ? new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)
+        : new THREE.Vector3(0, 0, 0);
+    const explosionTargets = generateExplosionTargets(count, explosionCenter);
+
+    // Remove all existing particles
+    testParticles.forEach(mesh => {
+        treeGroup.remove(mesh);
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+    });
+    testParticles.length = 0;
+
+    // Recreate all particles with new config
+    for (let i = 0; i < count; i++) {
+        const mesh = createTestParticle(explosionTargets[i]);
+        testParticles.push(mesh);
+    }
 }
 
 // --- DAT.GUI FOR ALL CONFIG SETTINGS ---
@@ -1147,123 +1206,92 @@ guiControls.showTreeParticles = true;
 visibilityFolder.add(guiControls, 'showTreeParticles')
     .name('Show Tree Particles')
     .onChange(val => {
-        treeGroup.visible = val;
-    });
-
-guiControls.showTestMaterial = false;
-visibilityFolder.add(guiControls, 'showTestMaterial')
-    .name('Show Test Material')
-    .onChange(val => {
-        testMaterialConfig.visible = val;
-        if (testMesh) {
-            testMesh.visible = val;
-        } else if (val) {
-            createTestMesh();
-        }
+        // Only show tree particles if enabled AND no test objects are active
+        particles.forEach(p => {
+            p.visible = val && guiControls.testObjectCount === 0;
+        });
     });
 
 visibilityFolder.open();
 
-// === TEST MATERIAL (DEBUG) ===
-const testMatFolder = gui.addFolder('Test Material (Debug)');
+// === TEST OBJECTS (DEBUG) ===
+const testObjectsFolder = gui.addFolder('Test Objects (Debug)');
 
-// Add test material controls to guiControls
-Object.assign(guiControls, {
-    testShape: testMaterialConfig.shape,
-    testMaterialType: testMaterialConfig.materialType,
-    testScale: testMaterialConfig.scale,
-    testColor: testMaterialConfig.color,
-    testEmissive: testMaterialConfig.emissive,
-    testEmissiveIntensity: testMaterialConfig.emissiveIntensity,
-    testTransmission: testMaterialConfig.transmission,
-    testThickness: testMaterialConfig.thickness,
-    testRoughness: testMaterialConfig.roughness,
-    testMetalness: testMaterialConfig.metalness,
-    testClearcoat: testMaterialConfig.clearcoat,
-    testClearcoatRoughness: testMaterialConfig.clearcoatRoughness,
-    testIOR: testMaterialConfig.ior,
-    testEnvMapIntensity: testMaterialConfig.envMapIntensity,
-});
-
-// Debounced rebuild function for smoother updates
+// Debounced rebuild function for all test objects
 let rebuildTimeout = null;
-function debouncedRebuildTestMesh() {
+function debouncedRebuildAll() {
     if (rebuildTimeout) {
         clearTimeout(rebuildTimeout);
     }
     rebuildTimeout = setTimeout(() => {
-        testMaterialConfig.shape = guiControls.testShape;
-        testMaterialConfig.materialType = guiControls.testMaterialType;
-        testMaterialConfig.scale = guiControls.testScale;
-        testMaterialConfig.color = guiControls.testColor;
-        testMaterialConfig.emissive = guiControls.testEmissive;
-        testMaterialConfig.emissiveIntensity = guiControls.testEmissiveIntensity;
-        testMaterialConfig.transmission = guiControls.testTransmission;
-        testMaterialConfig.thickness = guiControls.testThickness;
-        testMaterialConfig.roughness = guiControls.testRoughness;
-        testMaterialConfig.metalness = guiControls.testMetalness;
-        testMaterialConfig.clearcoat = guiControls.testClearcoat;
-        testMaterialConfig.clearcoatRoughness = guiControls.testClearcoatRoughness;
-        testMaterialConfig.ior = guiControls.testIOR;
-        testMaterialConfig.envMapIntensity = guiControls.testEnvMapIntensity;
-
-        if (testMesh && testMaterialConfig.visible) {
-            createTestMesh();
-        }
+        rebuildAllTestParticles();
     }, 500);
 }
 
-// Basic properties with auto-update
-testMatFolder.add(guiControls, 'testShape', ['star', 'heart', 'snowflake', 'present', 'sphere'])
+// Object count slider (0-1000, replaces tree when > 0)
+guiControls.testObjectCount = 0;
+testObjectsFolder.add(guiControls, 'testObjectCount', 0, 1000, 1)
+    .name('Object Count')
+    .onChange(val => {
+        const count = Math.floor(val);
+        setTestObjectCount(count);
+        // Hide original tree particles when test objects are active
+        particles.forEach(p => {
+            p.visible = count === 0 && guiControls.showTreeParticles;
+        });
+    });
+
+// Shape and material
+testObjectsFolder.add(testObjectConfig, 'shape', ['star', 'heart', 'snowflake', 'present', 'sphere'])
     .name('Shape')
-    .onChange(debouncedRebuildTestMesh);
-testMatFolder.add(guiControls, 'testMaterialType', ['matte', 'satin', 'metallic', 'glass', 'frostedGlass'])
+    .onChange(debouncedRebuildAll);
+testObjectsFolder.add(testObjectConfig, 'materialType', ['matte', 'satin', 'metallic', 'glass', 'frostedGlass'])
     .name('Material Type')
-    .onChange(debouncedRebuildTestMesh);
-testMatFolder.add(guiControls, 'testScale', 0.1, 10, 0.1)
+    .onChange(debouncedRebuildAll);
+testObjectsFolder.add(testObjectConfig, 'scale', 0.1, 10, 0.1)
     .name('Scale')
-    .onChange(debouncedRebuildTestMesh);
+    .onChange(debouncedRebuildAll);
 
-// Colors with auto-update
-testMatFolder.addColor(guiControls, 'testColor')
+// Colors
+testObjectsFolder.addColor(testObjectConfig, 'color')
     .name('Base Color')
-    .onChange(debouncedRebuildTestMesh);
-testMatFolder.addColor(guiControls, 'testEmissive')
+    .onChange(debouncedRebuildAll);
+testObjectsFolder.addColor(testObjectConfig, 'emissive')
     .name('Emissive Color')
-    .onChange(debouncedRebuildTestMesh);
-testMatFolder.add(guiControls, 'testEmissiveIntensity', 0, 2, 0.01)
+    .onChange(debouncedRebuildAll);
+testObjectsFolder.add(testObjectConfig, 'emissiveIntensity', 0, 2, 0.01)
     .name('Emissive Intensity')
-    .onChange(debouncedRebuildTestMesh);
+    .onChange(debouncedRebuildAll);
 
-// Physical properties with auto-update
-const testPhysicalFolder = testMatFolder.addFolder('Physical Properties');
-testPhysicalFolder.add(guiControls, 'testTransmission', 0, 1, 0.01)
+// Physical properties
+const testPhysicalFolder = testObjectsFolder.addFolder('Physical Properties');
+testPhysicalFolder.add(testObjectConfig, 'transmission', 0, 1, 0.01)
     .name('Transmission')
-    .onChange(debouncedRebuildTestMesh);
-testPhysicalFolder.add(guiControls, 'testThickness', 0, 50, 0.5)
+    .onChange(debouncedRebuildAll);
+testPhysicalFolder.add(testObjectConfig, 'thickness', 0, 50, 0.5)
     .name('Thickness')
-    .onChange(debouncedRebuildTestMesh);
-testPhysicalFolder.add(guiControls, 'testRoughness', 0, 1, 0.01)
+    .onChange(debouncedRebuildAll);
+testPhysicalFolder.add(testObjectConfig, 'roughness', 0, 1, 0.01)
     .name('Roughness')
-    .onChange(debouncedRebuildTestMesh);
-testPhysicalFolder.add(guiControls, 'testMetalness', 0, 1, 0.01)
+    .onChange(debouncedRebuildAll);
+testPhysicalFolder.add(testObjectConfig, 'metalness', 0, 1, 0.01)
     .name('Metalness')
-    .onChange(debouncedRebuildTestMesh);
-testPhysicalFolder.add(guiControls, 'testClearcoat', 0, 1, 0.01)
+    .onChange(debouncedRebuildAll);
+testPhysicalFolder.add(testObjectConfig, 'clearcoat', 0, 1, 0.01)
     .name('Clearcoat')
-    .onChange(debouncedRebuildTestMesh);
-testPhysicalFolder.add(guiControls, 'testClearcoatRoughness', 0, 1, 0.01)
+    .onChange(debouncedRebuildAll);
+testPhysicalFolder.add(testObjectConfig, 'clearcoatRoughness', 0, 1, 0.01)
     .name('Clearcoat Roughness')
-    .onChange(debouncedRebuildTestMesh);
-testPhysicalFolder.add(guiControls, 'testIOR', 1.0, 2.5, 0.01)
+    .onChange(debouncedRebuildAll);
+testPhysicalFolder.add(testObjectConfig, 'ior', 1.0, 2.5, 0.01)
     .name('IOR')
-    .onChange(debouncedRebuildTestMesh);
-testPhysicalFolder.add(guiControls, 'testEnvMapIntensity', 0, 5, 0.1)
+    .onChange(debouncedRebuildAll);
+testPhysicalFolder.add(testObjectConfig, 'envMapIntensity', 0, 5, 0.1)
     .name('Env Map Intensity')
-    .onChange(debouncedRebuildTestMesh);
+    .onChange(debouncedRebuildAll);
 testPhysicalFolder.open();
 
-testMatFolder.open();
+testObjectsFolder.open();
 
 // --- MOUSE PARALLAX ---
 const mouse = new THREE.Vector2(0, 0);
@@ -1353,8 +1381,10 @@ function animate() {
     treeGroup.position.x += (targetPosition.x - treeGroup.position.x) * CONFIG.parallaxSmoothing;
     treeGroup.position.y += (targetPosition.y + CONFIG.treeYOffset - treeGroup.position.y) * CONFIG.parallaxSmoothing;
 
-    // Particle Logic
+    // Particle Logic - applies to both tree particles and test particles
     let allReturned = true;
+
+    // Animate tree particles
     particles.forEach((p, index) => {
         // Constant gentle rotation for all states
         p.rotation.x += p.userData.rotSpeed.x;
@@ -1412,12 +1442,63 @@ function animate() {
         }
     });
 
-    // Test mesh rotation (if visible)
-    if (testMesh && testMesh.visible && testMesh.userData.isTestMesh) {
-        testMesh.rotation.x += testMesh.userData.rotSpeed.x;
-        testMesh.rotation.y += testMesh.userData.rotSpeed.y;
-        testMesh.rotation.z += testMesh.userData.rotSpeed.z;
-    }
+    // Animate test particles (same logic as tree particles)
+    testParticles.forEach((p, index) => {
+        // Constant gentle rotation for all states
+        p.rotation.x += p.userData.rotSpeed.x;
+        p.rotation.y += p.userData.rotSpeed.y;
+        p.rotation.z += p.userData.rotSpeed.z;
+
+        if (state === "IDLE") {
+            // Gentle floating motion
+            const floatOffset = Math.sin(time * CONFIG.idleFloatSpeed + index * 0.1) * CONFIG.idleFloatAmount;
+            p.position.y = p.userData.originalPos.y + floatOffset;
+            p.position.x = p.userData.originalPos.x;
+            p.position.z = p.userData.originalPos.z;
+        }
+        else if (state === "EXPLODING") {
+            // Calculate parallax offset based on mouse position
+            const parallaxX = mouse.x * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
+            const parallaxY = mouse.y * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
+
+            // Smoothly interpolate toward target parallax shift
+            p.userData.individualParallaxShift.x += (parallaxX - p.userData.individualParallaxShift.x) * 0.08;
+            p.userData.individualParallaxShift.y += (parallaxY - p.userData.individualParallaxShift.y) * 0.08;
+
+            // Calculate target position with parallax applied
+            const targetX = p.userData.explosionTarget.x + p.userData.individualParallaxShift.x;
+            const targetY = p.userData.explosionTarget.y + p.userData.individualParallaxShift.y;
+            const targetZ = p.userData.explosionTarget.z;
+
+            // Lerp toward parallax-adjusted target
+            p.position.x += (targetX - p.position.x) * CONFIG.animationSpeed;
+            p.position.y += (targetY - p.position.y) * CONFIG.animationSpeed;
+            p.position.z += (targetZ - p.position.z) * CONFIG.animationSpeed;
+
+            // Add subtle floating motion on top
+            const floatOffset = Math.sin(time * CONFIG.idleFloatSpeed * 2 + index * 0.1) * CONFIG.idleFloatAmount;
+            p.position.x += Math.sin(time * 0.001 + index) * 0.01;
+            p.position.y += floatOffset;
+            p.position.z += Math.cos(time * 0.001 + index) * 0.01;
+
+            // Faster rotation when exploding
+            p.rotation.x += 0.02;
+            p.rotation.y += 0.01;
+        }
+        else if (state === "RETURNING") {
+            // Return to original tree position using same animation speed
+            p.position.lerp(p.userData.originalPos, CONFIG.animationSpeed);
+
+            // Fade out parallax shift
+            p.userData.individualParallaxShift.multiplyScalar(0.95);
+
+            // Check if this particle has returned close enough to its original position
+            const dist = p.position.distanceTo(p.userData.originalPos);
+            if (dist > 0.1) {
+                allReturned = false;
+            }
+        }
+    });
 
     // Transition to IDLE when all particles have returned
     if (state === "RETURNING" && allReturned) {
