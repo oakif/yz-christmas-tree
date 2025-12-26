@@ -122,11 +122,78 @@ function updateCamera(newState) {
     }
 }
 
-// --- SETUP IMAGE ---
-const imgElement = document.getElementById('reward-image');
+// --- SETUP 3D REWARD IMAGE BOX ---
+let rewardBox = null;
+let rewardBoxTargetScale = 0;
+let rewardBoxTargetOpacity = 0;
+let rewardBoxShouldShow = false;
+const textureLoader = new THREE.TextureLoader();
+
 if (CONFIG.rewardImage) {
-    imgElement.src = CONFIG.rewardImage;
-    imgElement.style.display = "block";
+    textureLoader.load(CONFIG.rewardImage, (texture) => {
+        const imgWidth = texture.image.width;
+        const imgHeight = texture.image.height;
+        const aspectRatio = imgWidth / imgHeight;
+
+        // Calculate box dimensions based on max dimension
+        const maxDim = CONFIG.reward.box.maxDimension;
+        let boxWidth, boxHeight;
+        if (aspectRatio >= 1) {
+            // Landscape or square
+            boxWidth = maxDim;
+            boxHeight = maxDim / aspectRatio;
+        } else {
+            // Portrait
+            boxHeight = maxDim;
+            boxWidth = maxDim * aspectRatio;
+        }
+        const boxDepth = CONFIG.reward.box.thickness;
+
+        // Create box geometry
+        const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+
+        // Create materials array (6 faces: +x, -x, +y, -y, +z (front), -z (back))
+        const sideMaterial = new THREE.MeshStandardMaterial({
+            color: CONFIG.reward.box.backColor,
+            transparent: true,
+            opacity: 0,
+        });
+        const frontMaterial = new THREE.MeshStandardMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0,
+        });
+        const backMaterial = new THREE.MeshStandardMaterial({
+            color: CONFIG.reward.box.backColor,
+            transparent: true,
+            opacity: 0,
+        });
+
+        const materials = [
+            sideMaterial.clone(),  // +x (right)
+            sideMaterial.clone(),  // -x (left)
+            sideMaterial.clone(),  // +y (top)
+            sideMaterial.clone(),  // -y (bottom)
+            frontMaterial,         // +z (front - image)
+            backMaterial,          // -z (back)
+        ];
+
+        rewardBox = new THREE.Mesh(geometry, materials);
+
+        // Position at scene center (camera pivot point)
+        rewardBox.position.set(0, CONFIG.treeYOffset, 0);
+
+        // Start with scale 0 (invisible)
+        rewardBox.scale.setScalar(0.001);
+
+        // Store current rotation for parallax smoothing
+        rewardBox.userData = {
+            currentRotationX: 0,
+            currentRotationY: 0,
+        };
+
+        scene.add(rewardBox);
+    });
 }
 
 // --- POST PROCESSING ---
@@ -1685,6 +1752,49 @@ function animate() {
     treeGroup.position.x += (targetPosition.x - treeGroup.position.x) * CONFIG.parallaxSmoothing;
     treeGroup.position.y += (targetPosition.y + CONFIG.treeYOffset - treeGroup.position.y) * CONFIG.parallaxSmoothing;
 
+    // --- REWARD BOX ANIMATION ---
+    if (rewardBox) {
+        // Only visible when flag is set (after delay in EXPLODING state)
+        if (rewardBoxShouldShow) {
+            rewardBoxTargetScale = 1;
+            rewardBoxTargetOpacity = 1;
+        } else {
+            rewardBoxTargetScale = 0;
+            rewardBoxTargetOpacity = 0;
+        }
+
+        // Animate scale (smooth interpolation)
+        const currentScale = rewardBox.scale.x;
+        const newScale = currentScale + (rewardBoxTargetScale - currentScale) * CONFIG.reward.animation.scaleSpeed;
+        rewardBox.scale.setScalar(Math.max(0.001, newScale)); // Avoid zero scale
+
+        // Animate opacity for all materials
+        rewardBox.material.forEach(mat => {
+            mat.opacity += (rewardBoxTargetOpacity - mat.opacity) * CONFIG.reward.animation.fadeSpeed;
+        });
+
+        // --- PARALLAX ROTATION (billboard with delayed offset) ---
+        // Calculate target rotation based on mouse position
+        const parallaxStrength = CONFIG.reward.parallax.rotationStrength;
+        const targetRotX = mouse.y * parallaxStrength;
+        const targetRotY = -mouse.x * parallaxStrength;
+
+        // Slowly interpolate current rotation toward target (creates delay effect)
+        const smoothing = CONFIG.reward.parallax.smoothing;
+        rewardBox.userData.currentRotationX += (targetRotX - rewardBox.userData.currentRotationX) * smoothing;
+        rewardBox.userData.currentRotationY += (targetRotY - rewardBox.userData.currentRotationY) * smoothing;
+
+        // Make box face camera (billboard), then apply parallax offset
+        rewardBox.lookAt(camera.position);
+
+        // Add the delayed parallax rotation offset
+        rewardBox.rotation.x += rewardBox.userData.currentRotationX;
+        rewardBox.rotation.y += rewardBox.userData.currentRotationY;
+
+        // Keep position fixed at center
+        rewardBox.position.set(0, CONFIG.treeYOffset, 0);
+    }
+
     // Particle Logic - applies to both tree particles and test particles
     let allReturned = true;
 
@@ -1844,10 +1954,8 @@ function triggerExplosion(event) {
             returnTimer = null;
         }
 
-        // Hide image immediately
-        if (CONFIG.rewardImage) {
-            imgElement.classList.remove('visible');
-        }
+        // Reset reward box visibility flag
+        rewardBoxShouldShow = false;
 
         state = "RETURNING";
         updateCamera(state);
@@ -1872,16 +1980,17 @@ function triggerExplosion(event) {
         p.userData.individualParallaxShift.set(0, 0, 0);
     });
 
+    // Show reward box after delay
     if (CONFIG.rewardImage) {
         setTimeout(() => {
-            imgElement.classList.add('visible');
+            if (state === "EXPLODING") {
+                rewardBoxShouldShow = true;
+            }
         }, CONFIG.imageDelay);
     }
 
     returnTimer = setTimeout(() => {
-        if (CONFIG.rewardImage) {
-            imgElement.classList.remove('visible');
-        }
+        rewardBoxShouldShow = false;
         state = "RETURNING";
         updateCamera(state);
         // IDLE transition now happens automatically based on particle convergence

@@ -8,26 +8,9 @@
         
         #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
+        /* DOM reward image replaced by 3D box in scene */
         #reward-image {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0.5);
-            opacity: 0;
-            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 2;
-            max-width: 60%;
-            max-height: 80%;
-            pointer-events: none;
-            border-radius: 15px;
-            box-shadow: 0 0 50px rgba(255, 255, 255, 0.4);
-            border: 2px solid rgba(255,255,255,0.2);
-            display: none; /* Hidden by default */
-        }
-
-        #reward-image.visible {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1);
+            display: none !important;
         }
 
         #fps-counter {

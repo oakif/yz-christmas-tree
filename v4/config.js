@@ -184,7 +184,20 @@ export const CONFIG = {
     // ========================================
     reward: {
         image: './images/cat.jpeg',       // Path to image displayed on explosion (empty = disabled)
-        delay: 500,      // Milliseconds before showing image after explosion
+        delay: 100,      // Milliseconds before showing image after explosion
+        box: {
+            maxDimension: 25,            // Max width or height (should be < explosionInnerRadius)
+            thickness: 2,                // Depth of the box
+            backColor: 0x222222,         // Solid color for back and sides
+        },
+        parallax: {
+            rotationStrength: 0.1,       // How much rotation offset when mouse moves
+            smoothing: 0.02,             // Low value = slow return to facing viewer
+        },
+        animation: {
+            scaleSpeed: 0.08,            // Speed of scale animation (0-1)
+            fadeSpeed: 0.08,             // Speed of fade animation (0-1)
+        },
     },
 
     // ========================================
