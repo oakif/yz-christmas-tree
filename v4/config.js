@@ -190,7 +190,7 @@ export const CONFIG = {
 
         // Box dimensions
         box: {
-            maxDimension: 35,            // Max width or height (should be < explosionInnerRadius)
+            maxDimension: 45,            // Max width or height (should be < explosionInnerRadius)
             thickness: 2,                // Depth of the box
             backColor: 0x333333,         // Solid color for back and sides
             borderRadius: 20,           // Rounded corner radius (0 = sharp corners)

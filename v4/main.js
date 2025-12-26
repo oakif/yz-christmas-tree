@@ -11,6 +11,9 @@ const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x050505, 0.015);
 
+// Separate scene for showcase (rendered without bloom/tone mapping)
+const showcaseScene = new THREE.Scene();
+
 // Create perspective camera
 const perspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 perspectiveCamera.position.x = CONFIG.cameraX;
@@ -219,11 +222,15 @@ function initializeShowcaseBox(texture) {
 
     const vignetteAlphaMap = createVignetteAlphaMap(CONFIG.showcase.effects.edgeSoftness);
 
-    const frontMaterial = new THREE.MeshStandardMaterial({
+    // Ensure texture uses correct color space
+    texture.colorSpace = THREE.SRGBColorSpace;
+
+    const frontMaterial = new THREE.MeshBasicMaterial({
         map: texture,
         alphaMap: vignetteAlphaMap,
         transparent: true,
         opacity: 0,
+        toneMapped: false,  // Exclude from tone mapping - show true colors
     });
     const backMaterial = new THREE.MeshStandardMaterial({
         color: CONFIG.showcase.box.backColor,
@@ -254,7 +261,7 @@ function initializeShowcaseBox(texture) {
         currentRotationY: 0,
     };
 
-    scene.add(showcaseBox);
+    showcaseScene.add(showcaseBox);
 }
 
 // Get next showcase image based on display mode
@@ -277,6 +284,9 @@ function getNextShowcaseImage() {
 // Update showcase box texture and resize
 function updateShowcaseBoxTexture(texture) {
     if (!showcaseBox || !texture) return;
+
+    // Ensure texture uses correct color space
+    texture.colorSpace = THREE.SRGBColorSpace;
 
     // Update the front face material (index 4 in materials array)
     const frontMaterial = showcaseBox.material[4];
@@ -332,6 +342,7 @@ function loadShowcaseImages() {
                     textureLoader.load(
                         folder + filename,
                         (texture) => {
+                            texture.colorSpace = THREE.SRGBColorSpace;  // Correct color space
                             showcaseTextures[index] = texture;
                             resolve(texture);
                         },
@@ -2133,7 +2144,19 @@ function animate() {
         updateCamera(state);
     }
 
+    // Render main scene with bloom
     composer.render();
+
+    // Render showcase separately without bloom or tone mapping (directly on top)
+    if (showcaseBox && showcaseBoxShouldShow) {
+        const savedToneMapping = renderer.toneMapping;
+        renderer.toneMapping = THREE.NoToneMapping;  // Disable tone mapping
+        renderer.autoClear = false;  // Don't clear the bloom render
+        renderer.clearDepth();  // Clear depth so showcase renders on top
+        renderer.render(showcaseScene, camera);  // Render showcase on top
+        renderer.autoClear = true;
+        renderer.toneMapping = savedToneMapping;  // Restore tone mapping
+    }
 }
 animate();
 
