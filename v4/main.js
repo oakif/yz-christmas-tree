@@ -834,12 +834,12 @@ function stringToHex(str) {
 
 // GUI controls object - uses hex strings for colors
 const guiControls = {
-    // Tree Geometry
+    // === Scene Setup - Tree Geometry ===
     treeHeight: CONFIG.treeHeight,
     treeRadius: CONFIG.treeRadius,
     treeYOffset: CONFIG.treeYOffset,
 
-    // Camera & View
+    // === Scene Setup - Camera & View ===
     cameraX: CONFIG.cameraX,
     cameraY: CONFIG.cameraY,
     cameraZ: CONFIG.cameraZ,
@@ -848,31 +848,33 @@ const guiControls = {
     isometricZoom: CONFIG.isometricZoom,
     isometricAngle: CONFIG.isometricAngle,
 
-    // Interaction
+    // === Interaction ===
     reassembleOnClick: CONFIG.reassembleOnClick,
     resetMouseOnLeave: CONFIG.resetMouseOnLeave,
 
-    // Animation & Physics - Idle
+    // === Animation & Effects - Idle Animation ===
     idleFloatSpeed: CONFIG.idleFloatSpeed,
     idleFloatAmount: CONFIG.idleFloatAmount,
 
-    // Animation & Physics - Explosion
+    // === Animation & Effects - Explosion Animation ===
     animationSpeed: CONFIG.animationSpeed,
     holdDuration: CONFIG.holdDuration,
 
-    // Parallax - Idle/Returning
+    // === Animation & Effects - Parallax Settings - Idle Parallax ===
+    parallaxEnabled: CONFIG.parallaxEnabled,
     parallaxStrengthX: CONFIG.parallaxStrengthX,
     parallaxStrengthY: CONFIG.parallaxStrengthY,
     parallaxSmoothing: CONFIG.parallaxSmoothing,
     parallaxPositionStrengthX: CONFIG.parallaxPositionStrengthX,
     parallaxPositionStrengthY: CONFIG.parallaxPositionStrengthY,
 
-    // Parallax - Exploded
+    // === Animation & Effects - Parallax Settings - Exploded Parallax ===
+    explodedParallaxEnabled: CONFIG.explodedParallaxEnabled,
     explodedParallaxStrengthX: CONFIG.explodedParallaxStrengthX,
     explodedParallaxStrengthY: CONFIG.explodedParallaxStrengthY,
     explodedParallaxStrength: CONFIG.explodedParallaxStrength,
 
-    // Explosion Distribution
+    // === Animation & Effects - Explosion Distribution ===
     explosionInnerRadius: CONFIG.explosionInnerRadius,
     explosionOuterRadius: CONFIG.explosionOuterRadius,
     explosionCenterMode: CONFIG.explosionCenterMode,
@@ -880,61 +882,71 @@ const guiControls = {
     explosionOffsetY: CONFIG.explosionOffsetY,
     explosionOffsetZ: CONFIG.explosionOffsetZ,
 
-    // Visual Effects - Bloom
+    // === Rendering & Visuals - Post Processing ===
     bloomStrength: CONFIG.bloomStrength,
     bloomRadius: CONFIG.bloomRadius,
     bloomThreshold: CONFIG.bloomThreshold,
     toneMappingExposure: CONFIG.toneMappingExposure,
 
-    // Visual Effects - Environment Map
+    // === Rendering & Visuals - Environment ===
     envTopColor: hexToString(CONFIG.environmentMap.topColor),
     envBottomColor: hexToString(CONFIG.environmentMap.bottomColor),
 
-    // Lighting - Ambient
+    // === Rendering & Visuals - Lighting - Ambient ===
     ambientColor: hexToString(CONFIG.lighting.ambient.color),
     ambientIntensity: CONFIG.lighting.ambient.intensity,
 
-    // Lighting - Hemisphere
+    // === Rendering & Visuals - Lighting - Hemisphere ===
     hemiSkyColor: hexToString(CONFIG.lighting.hemisphere.skyColor),
     hemiGroundColor: hexToString(CONFIG.lighting.hemisphere.groundColor),
     hemiIntensity: CONFIG.lighting.hemisphere.intensity,
 
-    // Lighting - Key Light
+    // === Rendering & Visuals - Lighting - Key Light ===
     keyLightColor: hexToString(CONFIG.lighting.keyLight.color),
     keyLightIntensity: CONFIG.lighting.keyLight.intensity,
 
-    // Lighting - Fill Light
+    // === Rendering & Visuals - Lighting - Fill Light ===
     fillLightColor: hexToString(CONFIG.lighting.fillLight.color),
     fillLightIntensity: CONFIG.lighting.fillLight.intensity,
 
-    // Lighting - Rim Light
+    // === Rendering & Visuals - Lighting - Rim Light ===
     rimLightColor: hexToString(CONFIG.lighting.rimLight.color),
     rimLightIntensity: CONFIG.lighting.rimLight.intensity,
 
-    // Lighting - Overhead Light
+    // === Rendering & Visuals - Lighting - Overhead Light ===
     overheadLightColor: hexToString(CONFIG.lighting.overheadLight.color),
     overheadLightIntensity: CONFIG.lighting.overheadLight.intensity,
 
-    // Lighting - Top Glow
+    // === Rendering & Visuals - Lighting - Top Glow ===
     topGlowColor: hexToString(CONFIG.lighting.topGlow.color),
     topGlowIntensity: CONFIG.lighting.topGlow.intensity,
     topGlowRange: CONFIG.lighting.topGlow.range,
 
-    // Reward Image
-    imageDelay: CONFIG.imageDelay,
+    // === UI & Performance - Visibility ===
+    showTreeParticles: CONFIG.showTreeParticles,
+    showFPS: CONFIG.showFPS,
 
-    // Performance
-    performanceMode: CONFIG.performanceMode
+    // === UI & Performance - Performance ===
+    performanceMode: CONFIG.performanceMode,
+    uncapFPS: CONFIG.uncapFPS,
+
+    // === Reward Image ===
+    imageDelay: CONFIG.imageDelay,
 };
 
-// === TREE GEOMETRY ===
-const treeFolder = gui.addFolder('Tree Geometry');
-treeFolder.add(guiControls, 'treeHeight', 10, 100).name('Height');
-treeFolder.add(guiControls, 'treeRadius', 5, 30).name('Radius');
-treeFolder.add(guiControls, 'treeYOffset', -20, 20).name('Y Offset');
+// ========================================
+// 1. SCENE SETUP
+// ========================================
+const sceneSetupFolder = gui.addFolder('Scene Setup');
 
-// === CAMERA & VIEW ===
-const cameraFolder = gui.addFolder('Camera & View');
+// Tree Geometry
+const treeGeometryFolder = sceneSetupFolder.addFolder('Tree Geometry');
+treeGeometryFolder.add(guiControls, 'treeHeight', 10, 100).name('Height');
+treeGeometryFolder.add(guiControls, 'treeRadius', 5, 30).name('Radius');
+treeGeometryFolder.add(guiControls, 'treeYOffset', -20, 20).name('Y Offset');
+
+// Camera & View
+const cameraFolder = sceneSetupFolder.addFolder('Camera & View');
 cameraFolder.add(guiControls, 'cameraX', -50, 50).name('Camera X').onChange(val => {
     perspectiveCamera.position.x = val;
     CONFIG.cameraX = val;
@@ -984,7 +996,9 @@ cameraFolder.add(guiControls, 'isometricAngle', 0, 90).name('Iso Angle').onChang
     orthographicCamera.lookAt(0, 0, 0);
 });
 
-// === INTERACTION ===
+// ========================================
+// 2. INTERACTION
+// ========================================
 const interactionFolder = gui.addFolder('Interaction');
 interactionFolder.add(guiControls, 'reassembleOnClick').name('Reassemble on Click').onChange(val => {
     CONFIG.reassembleOnClick = val;
@@ -993,8 +1007,13 @@ interactionFolder.add(guiControls, 'resetMouseOnLeave').name('Reset Mouse on Lea
     CONFIG.resetMouseOnLeave = val;
 });
 
-// === ANIMATION - IDLE ===
-const idleAnimFolder = gui.addFolder('Animation - Idle');
+// ========================================
+// 3. ANIMATION & EFFECTS
+// ========================================
+const animationFolder = gui.addFolder('Animation & Effects');
+
+// Idle Animation
+const idleAnimFolder = animationFolder.addFolder('Idle Animation');
 idleAnimFolder.add(guiControls, 'idleFloatSpeed', 0, 0.01, 0.0001).name('Float Speed').onChange(val => {
     CONFIG.idleFloatSpeed = val;
 });
@@ -1002,8 +1021,8 @@ idleAnimFolder.add(guiControls, 'idleFloatAmount', 0, 1, 0.01).name('Float Amoun
     CONFIG.idleFloatAmount = val;
 });
 
-// === ANIMATION - EXPLOSION ===
-const explosionAnimFolder = gui.addFolder('Animation - Explosion');
+// Explosion Animation
+const explosionAnimFolder = animationFolder.addFolder('Explosion Animation');
 explosionAnimFolder.add(guiControls, 'animationSpeed', 0.01, 0.5, 0.01).name('Speed').onChange(val => {
     CONFIG.animationSpeed = val;
 });
@@ -1011,30 +1030,35 @@ explosionAnimFolder.add(guiControls, 'holdDuration', 1000, 60000, 1000).name('Ho
     CONFIG.holdDuration = val;
 });
 
-// === PARALLAX - IDLE/RETURNING ===
-const parallaxFolder = gui.addFolder('Parallax - Idle');
-guiControls.parallaxEnabled = true;
-parallaxFolder.add(guiControls, 'parallaxEnabled').name('Enabled');
-parallaxFolder.add(guiControls, 'parallaxStrengthX', 0, 10, 0.1).name('Strength X').onChange(val => {
+// Parallax Settings
+const parallaxSettingsFolder = animationFolder.addFolder('Parallax Settings');
+
+// Idle Parallax (sub-subfolder)
+const idleParallaxFolder = parallaxSettingsFolder.addFolder('Idle Parallax');
+idleParallaxFolder.add(guiControls, 'parallaxEnabled').name('Enabled').onChange(val => {
+    CONFIG.parallaxEnabled = val;
+});
+idleParallaxFolder.add(guiControls, 'parallaxStrengthX', 0, 10, 0.1).name('Strength X').onChange(val => {
     CONFIG.parallaxStrengthX = val;
 });
-parallaxFolder.add(guiControls, 'parallaxStrengthY', 0, 10, 0.1).name('Strength Y').onChange(val => {
+idleParallaxFolder.add(guiControls, 'parallaxStrengthY', 0, 10, 0.1).name('Strength Y').onChange(val => {
     CONFIG.parallaxStrengthY = val;
 });
-parallaxFolder.add(guiControls, 'parallaxSmoothing', 0.01, 0.2, 0.01).name('Smoothing').onChange(val => {
+idleParallaxFolder.add(guiControls, 'parallaxSmoothing', 0.01, 0.2, 0.01).name('Smoothing').onChange(val => {
     CONFIG.parallaxSmoothing = val;
 });
-parallaxFolder.add(guiControls, 'parallaxPositionStrengthX', -5, 5, 0.1).name('Position X').onChange(val => {
+idleParallaxFolder.add(guiControls, 'parallaxPositionStrengthX', -5, 5, 0.1).name('Position X').onChange(val => {
     CONFIG.parallaxPositionStrengthX = val;
 });
-parallaxFolder.add(guiControls, 'parallaxPositionStrengthY', -5, 5, 0.1).name('Position Y').onChange(val => {
+idleParallaxFolder.add(guiControls, 'parallaxPositionStrengthY', -5, 5, 0.1).name('Position Y').onChange(val => {
     CONFIG.parallaxPositionStrengthY = val;
 });
 
-// === PARALLAX - EXPLODED ===
-const explodedParallaxFolder = gui.addFolder('Parallax - Exploded');
-guiControls.explodedParallaxEnabled = true;
-explodedParallaxFolder.add(guiControls, 'explodedParallaxEnabled').name('Enabled');
+// Exploded Parallax (sub-subfolder)
+const explodedParallaxFolder = parallaxSettingsFolder.addFolder('Exploded Parallax');
+explodedParallaxFolder.add(guiControls, 'explodedParallaxEnabled').name('Enabled').onChange(val => {
+    CONFIG.explodedParallaxEnabled = val;
+});
 explodedParallaxFolder.add(guiControls, 'explodedParallaxStrengthX', 0, 10, 0.1).name('Strength X').onChange(val => {
     CONFIG.explodedParallaxStrengthX = val;
 });
@@ -1045,8 +1069,8 @@ explodedParallaxFolder.add(guiControls, 'explodedParallaxStrength', 0, 20, 0.5).
     CONFIG.explodedParallaxStrength = val;
 });
 
-// === EXPLOSION DISTRIBUTION ===
-const explosionDistFolder = gui.addFolder('Explosion Distribution');
+// Explosion Distribution
+const explosionDistFolder = animationFolder.addFolder('Explosion Distribution');
 explosionDistFolder.add(guiControls, 'explosionInnerRadius', 0, 100).name('Inner Radius').onChange(val => {
     CONFIG.explosionInnerRadius = val;
 });
@@ -1066,27 +1090,34 @@ explosionDistFolder.add(guiControls, 'explosionOffsetZ', -50, 50).name('Offset Z
     CONFIG.explosionOffsetZ = val;
 });
 
-// === VISUAL EFFECTS - BLOOM ===
-const bloomFolder = gui.addFolder('Visual Effects - Bloom');
-bloomFolder.add(guiControls, 'bloomStrength', 0, 3, 0.01).name('Strength').onChange(val => {
+// ========================================
+// 4. RENDERING & VISUALS
+// ========================================
+const renderingFolder = gui.addFolder('Rendering & Visuals');
+
+// Post Processing
+const postProcessingFolder = renderingFolder.addFolder('Post Processing');
+
+// Bloom controls
+postProcessingFolder.add(guiControls, 'bloomStrength', 0, 3, 0.01).name('Bloom Strength').onChange(val => {
     bloomPass.strength = val;
     CONFIG.bloomStrength = val;
 });
-bloomFolder.add(guiControls, 'bloomRadius', 0, 2, 0.01).name('Radius').onChange(val => {
+postProcessingFolder.add(guiControls, 'bloomRadius', 0, 2, 0.01).name('Bloom Radius').onChange(val => {
     bloomPass.radius = val;
     CONFIG.bloomRadius = val;
 });
-bloomFolder.add(guiControls, 'bloomThreshold', 0, 1, 0.01).name('Threshold').onChange(val => {
+postProcessingFolder.add(guiControls, 'bloomThreshold', 0, 1, 0.01).name('Bloom Threshold').onChange(val => {
     bloomPass.threshold = val;
     CONFIG.bloomThreshold = val;
 });
-bloomFolder.add(guiControls, 'toneMappingExposure', 0, 10, 0.1).name('Exposure').onChange(val => {
+postProcessingFolder.add(guiControls, 'toneMappingExposure', 0, 10, 0.1).name('Exposure').onChange(val => {
     renderer.toneMappingExposure = val;
     CONFIG.toneMappingExposure = val;
 });
 
-// === VISUAL EFFECTS - ENVIRONMENT ===
-const envFolder = gui.addFolder('Visual Effects - Environment');
+// Environment
+const envFolder = renderingFolder.addFolder('Environment');
 envFolder.addColor(guiControls, 'envTopColor').name('Sky Top').onChange(val => {
     CONFIG.environmentMap.topColor = stringToHex(val);
     createEnvironmentMap();
@@ -1098,8 +1129,8 @@ envFolder.addColor(guiControls, 'envBottomColor').name('Sky Bottom').onChange(va
     scene.environment = envMap;
 });
 
-// === LIGHTING (CONSOLIDATED) ===
-const lightingFolder = gui.addFolder('Lighting');
+// Lighting
+const lightingFolder = renderingFolder.addFolder('Lighting');
 
 const ambientSubfolder = lightingFolder.addFolder('Ambient');
 ambientSubfolder.addColor(guiControls, 'ambientColor').name('Color').onChange(val => {
@@ -1179,34 +1210,23 @@ topGlowSubfolder.add(guiControls, 'topGlowRange', 0, 100, 1).name('Range').onCha
     CONFIG.lighting.topGlow.range = val;
 });
 
-// === REWARD IMAGE ===
-const rewardFolder = gui.addFolder('Reward Image');
-rewardFolder.add(guiControls, 'imageDelay', 0, 5000, 100).name('Delay (ms)').onChange(val => {
-    CONFIG.imageDelay = val;
-});
+// ========================================
+// 5. UI & PERFORMANCE
+// ========================================
+const uiPerfFolder = gui.addFolder('UI & Performance');
 
-// === PERFORMANCE ===
-const perfFolder = gui.addFolder('Performance');
-perfFolder.add(guiControls, 'performanceMode').name('Performance Mode').onChange(val => {
-    CONFIG.performanceMode = val;
-});
-
-// === VISIBILITY CONTROLS ===
-const visibilityFolder = gui.addFolder('Visibility Controls');
-
-guiControls.showTreeParticles = true;
+// Visibility
+const visibilityFolder = uiPerfFolder.addFolder('Visibility');
 visibilityFolder.add(guiControls, 'showTreeParticles')
     .name('Show Tree Particles')
     .onChange(val => {
+        CONFIG.showTreeParticles = val;
         // Only show tree particles if enabled AND no test objects are active
         const hasTestObjects = testObjectGroups.reduce((sum, g) => sum + g.count, 0) > 0;
         particles.forEach(p => {
             p.visible = val && !hasTestObjects;
         });
     });
-
-guiControls.showFPS = false;
-guiControls.uncapFPS = false;
 
 const fpsCounter = document.getElementById('fps-counter');
 const fpsText = document.getElementById('fps-text');
@@ -1220,6 +1240,7 @@ fpsCanvas.height = 60;
 visibilityFolder.add(guiControls, 'showFPS')
     .name('Show FPS')
     .onChange(val => {
+        CONFIG.showFPS = val;
         if (val) {
             fpsCounter.classList.add('visible');
         } else {
@@ -1227,10 +1248,26 @@ visibilityFolder.add(guiControls, 'showFPS')
         }
     });
 
-visibilityFolder.add(guiControls, 'uncapFPS')
-    .name('Uncap FPS');
+// Performance
+const performanceFolder = uiPerfFolder.addFolder('Performance');
+performanceFolder.add(guiControls, 'performanceMode').name('Performance Mode').onChange(val => {
+    CONFIG.performanceMode = val;
+});
+performanceFolder.add(guiControls, 'uncapFPS')
+    .name('Uncap FPS')
+    .onChange(val => {
+        CONFIG.uncapFPS = val;
+    });
 
 visibilityFolder.open();
+
+// ========================================
+// 6. REWARD IMAGE
+// ========================================
+const rewardFolder = gui.addFolder('Reward Image');
+rewardFolder.add(guiControls, 'imageDelay', 0, 5000, 100).name('Delay (ms)').onChange(val => {
+    CONFIG.imageDelay = val;
+});
 
 // === TEST OBJECTS (DEBUG) ===
 const testObjectsFolder = gui.addFolder('Test Objects (Debug)');
