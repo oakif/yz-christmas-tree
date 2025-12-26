@@ -122,135 +122,250 @@ function updateCamera(newState) {
     }
 }
 
-// --- SETUP 3D REWARD IMAGE BOX ---
-let rewardBox = null;
-let rewardBoxTargetScale = 0;
-let rewardBoxTargetOpacity = 0;
-let rewardBoxShouldShow = false;
+// --- SETUP 3D SHOWCASE IMAGE BOX ---
+let showcaseBox = null;
+let showcaseBoxTargetScale = 0;
+let showcaseBoxTargetOpacity = 0;
+let showcaseBoxShouldShow = false;
 const textureLoader = new THREE.TextureLoader();
 
-if (CONFIG.rewardImage) {
-    textureLoader.load(CONFIG.rewardImage, (texture) => {
-        const imgWidth = texture.image.width;
-        const imgHeight = texture.image.height;
-        const aspectRatio = imgWidth / imgHeight;
+// Multi-image state
+let showcaseTextures = [];
+let showcaseCurrentIndex = 0;
+let showcaseImagesLoaded = false;
 
-        // Calculate box dimensions based on max dimension
-        const maxDim = CONFIG.reward.box.maxDimension;
-        let boxWidth, boxHeight;
-        if (aspectRatio >= 1) {
-            // Landscape or square
-            boxWidth = maxDim;
-            boxHeight = maxDim / aspectRatio;
-        } else {
-            // Portrait
-            boxHeight = maxDim;
-            boxWidth = maxDim * aspectRatio;
+// Create rectangular vignette alpha map using canvas
+function createVignetteAlphaMap(edgeSoftness) {
+    const size = 512;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    // Create image data for pixel-by-pixel control
+    const imageData = ctx.createImageData(size, size);
+    const data = imageData.data;
+
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            // Normalize coordinates to 0-1 range
+            const u = x / size;
+            const v = y / size;
+
+            // Distance from center (0 at center, 1 at edges)
+            const centerDistX = Math.abs(u - 0.5) * 2.0;
+            const centerDistY = Math.abs(v - 0.5) * 2.0;
+            const maxDist = Math.max(centerDistX, centerDistY);
+
+            // Apply smoothstep for vignette (handle edgeSoftness = 0)
+            let vignette;
+            if (edgeSoftness <= 0.001) {
+                // No vignette - fully opaque
+                vignette = 1.0;
+            } else {
+                const smoothstep = (edge0, edge1, x) => {
+                    const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+                    return t * t * (3 - 2 * t);
+                };
+                vignette = smoothstep(1.0, 1.0 - edgeSoftness, maxDist);
+            }
+            const gray = Math.floor(vignette * 255);
+
+            // alphaMap uses grayscale value (not alpha channel)
+            // white = opaque, black = transparent
+            const index = (y * size + x) * 4;
+            data[index] = gray;      // R
+            data[index + 1] = gray;  // G
+            data[index + 2] = gray;  // B
+            data[index + 3] = 255;   // A (always opaque)
         }
-        const boxDepth = CONFIG.reward.box.thickness;
+    }
 
-        // Create box geometry
-        const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+    ctx.putImageData(imageData, 0, 0);
 
-        // Create materials array (6 faces: +x, -x, +y, -y, +z (front), -z (back))
-        const sideMaterial = new THREE.MeshStandardMaterial({
-            color: CONFIG.reward.box.backColor,
-            transparent: true,
-            opacity: 0,
-        });
-        // Create rectangular vignette alpha map using canvas
-        const createVignetteAlphaMap = (edgeSoftness) => {
-            const size = 512;
-            const canvas = document.createElement('canvas');
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
+    const vignetteTexture = new THREE.CanvasTexture(canvas);
+    return vignetteTexture;
+}
 
-            // Create image data for pixel-by-pixel control
-            const imageData = ctx.createImageData(size, size);
-            const data = imageData.data;
+// Initialize showcase box with a texture
+function initializeShowcaseBox(texture) {
+    const imgWidth = texture.image.width;
+    const imgHeight = texture.image.height;
+    const aspectRatio = imgWidth / imgHeight;
 
-            for (let y = 0; y < size; y++) {
-                for (let x = 0; x < size; x++) {
-                    // Normalize coordinates to 0-1 range
-                    const u = x / size;
-                    const v = y / size;
+    // Calculate box dimensions based on max dimension
+    const maxDim = CONFIG.showcase.box.maxDimension;
+    let boxWidth, boxHeight;
+    if (aspectRatio >= 1) {
+        // Landscape or square
+        boxWidth = maxDim;
+        boxHeight = maxDim / aspectRatio;
+    } else {
+        // Portrait
+        boxHeight = maxDim;
+        boxWidth = maxDim * aspectRatio;
+    }
+    const boxDepth = CONFIG.showcase.box.thickness;
 
-                    // Distance from center (0 at center, 1 at edges)
-                    const centerDistX = Math.abs(u - 0.5) * 2.0;
-                    const centerDistY = Math.abs(v - 0.5) * 2.0;
-                    const maxDist = Math.max(centerDistX, centerDistY);
+    // Create box geometry
+    const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
 
-                    // Apply smoothstep for vignette (handle edgeSoftness = 0)
-                    let vignette;
-                    if (edgeSoftness <= 0.001) {
-                        // No vignette - fully opaque
-                        vignette = 1.0;
-                    } else {
-                        const smoothstep = (edge0, edge1, x) => {
-                            const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
-                            return t * t * (3 - 2 * t);
-                        };
-                        vignette = smoothstep(1.0, 1.0 - edgeSoftness, maxDist);
-                    }
-                    const gray = Math.floor(vignette * 255);
+    // Create materials array (6 faces: +x, -x, +y, -y, +z (front), -z (back))
+    const sideMaterial = new THREE.MeshStandardMaterial({
+        color: CONFIG.showcase.box.backColor,
+        transparent: true,
+        opacity: 0,
+    });
 
-                    // alphaMap uses grayscale value (not alpha channel)
-                    // white = opaque, black = transparent
-                    const index = (y * size + x) * 4;
-                    data[index] = gray;      // R
-                    data[index + 1] = gray;  // G
-                    data[index + 2] = gray;  // B
-                    data[index + 3] = 255;   // A (always opaque)
-                }
+    const vignetteAlphaMap = createVignetteAlphaMap(CONFIG.showcase.effects.edgeSoftness);
+
+    const frontMaterial = new THREE.MeshStandardMaterial({
+        map: texture,
+        alphaMap: vignetteAlphaMap,
+        transparent: true,
+        opacity: 0,
+    });
+    const backMaterial = new THREE.MeshStandardMaterial({
+        color: CONFIG.showcase.box.backColor,
+        transparent: true,
+        opacity: 0,
+    });
+
+    const materials = [
+        sideMaterial.clone(),  // +x (right)
+        sideMaterial.clone(),  // -x (left)
+        sideMaterial.clone(),  // +y (top)
+        sideMaterial.clone(),  // -y (bottom)
+        frontMaterial,         // +z (front - image)
+        backMaterial,          // -z (back)
+    ];
+
+    showcaseBox = new THREE.Mesh(geometry, materials);
+
+    // Position at scene center (camera pivot point)
+    showcaseBox.position.set(0, CONFIG.treeYOffset, 0);
+
+    // Start with scale 0 (invisible)
+    showcaseBox.scale.setScalar(0.001);
+
+    // Store current rotation for parallax smoothing
+    showcaseBox.userData = {
+        currentRotationX: 0,
+        currentRotationY: 0,
+    };
+
+    scene.add(showcaseBox);
+}
+
+// Get next showcase image based on display mode
+function getNextShowcaseImage() {
+    if (showcaseTextures.length === 0) return null;
+
+    let texture;
+    if (CONFIG.showcase.displayMode === 'random') {
+        const randomIndex = Math.floor(Math.random() * showcaseTextures.length);
+        texture = showcaseTextures[randomIndex];
+    } else {
+        // Sequential mode
+        texture = showcaseTextures[showcaseCurrentIndex];
+        showcaseCurrentIndex = (showcaseCurrentIndex + 1) % showcaseTextures.length;
+    }
+
+    return texture;
+}
+
+// Update showcase box texture and resize
+function updateShowcaseBoxTexture(texture) {
+    if (!showcaseBox || !texture) return;
+
+    // Update the front face material (index 4 in materials array)
+    const frontMaterial = showcaseBox.material[4];
+    frontMaterial.map = texture;
+    frontMaterial.needsUpdate = true;
+
+    // Recalculate aspect ratio and resize box if needed
+    const imgWidth = texture.image.width;
+    const imgHeight = texture.image.height;
+    const aspectRatio = imgWidth / imgHeight;
+
+    const maxDim = CONFIG.showcase.box.maxDimension;
+    let boxWidth, boxHeight;
+    if (aspectRatio >= 1) {
+        boxWidth = maxDim;
+        boxHeight = maxDim / aspectRatio;
+    } else {
+        boxHeight = maxDim;
+        boxWidth = maxDim * aspectRatio;
+    }
+
+    // Update geometry by replacing it
+    const boxDepth = CONFIG.showcase.box.thickness;
+    const newGeometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+    showcaseBox.geometry.dispose();
+    showcaseBox.geometry = newGeometry;
+}
+
+// Load all showcase images
+function loadShowcaseImages() {
+    const folder = CONFIG.showcase.imageFolder;
+    const manifestPath = folder + CONFIG.showcase.manifestFile;
+
+    // Fetch the manifest file to get list of images
+    fetch(manifestPath)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Manifest not found: ${manifestPath}`);
+            }
+            return response.json();
+        })
+        .then(images => {
+            if (!images || images.length === 0) {
+                console.warn('No images found in manifest');
+                return;
             }
 
-            ctx.putImageData(imageData, 0, 0);
+            console.log(`Loading ${images.length} showcase images from manifest`);
 
-            const vignetteTexture = new THREE.CanvasTexture(canvas);
-            return vignetteTexture;
-        };
+            // Load all images from manifest
+            const loadPromises = images.map((filename, index) => {
+                return new Promise((resolve) => {
+                    textureLoader.load(
+                        folder + filename,
+                        (texture) => {
+                            showcaseTextures[index] = texture;
+                            resolve(texture);
+                        },
+                        undefined,
+                        (error) => {
+                            console.warn(`Failed to load showcase image: ${folder}${filename}`);
+                            resolve(null); // Don't reject, just mark as null
+                        }
+                    );
+                });
+            });
 
-        const vignetteAlphaMap = createVignetteAlphaMap(CONFIG.reward.effects.edgeSoftness);
+            return Promise.all(loadPromises);
+        })
+        .then(textures => {
+            if (!textures) return;
 
-        const frontMaterial = new THREE.MeshStandardMaterial({
-            map: texture,
-            alphaMap: vignetteAlphaMap,
-            transparent: true,
-            opacity: 0,
+            // Filter out failed loads
+            showcaseTextures = showcaseTextures.filter(t => t !== null);
+
+            if (showcaseTextures.length > 0) {
+                showcaseImagesLoaded = true;
+                console.log(`Successfully loaded ${showcaseTextures.length} showcase images`);
+                // Initialize showcase box with first image
+                initializeShowcaseBox(showcaseTextures[0]);
+            }
+        })
+        .catch(error => {
+            console.warn('Could not load showcase images:', error.message);
         });
-        const backMaterial = new THREE.MeshStandardMaterial({
-            color: CONFIG.reward.box.backColor,
-            transparent: true,
-            opacity: 0,
-        });
-
-        const materials = [
-            sideMaterial.clone(),  // +x (right)
-            sideMaterial.clone(),  // -x (left)
-            sideMaterial.clone(),  // +y (top)
-            sideMaterial.clone(),  // -y (bottom)
-            frontMaterial,         // +z (front - image)
-            backMaterial,          // -z (back)
-        ];
-
-        rewardBox = new THREE.Mesh(geometry, materials);
-
-        // Position at scene center (camera pivot point)
-        rewardBox.position.set(0, CONFIG.treeYOffset, 0);
-
-        // Start with scale 0 (invisible)
-        rewardBox.scale.setScalar(0.001);
-
-        // Store current rotation for parallax smoothing
-        rewardBox.userData = {
-            currentRotationX: 0,
-            currentRotationY: 0,
-        };
-
-        scene.add(rewardBox);
-    });
 }
+
+// Load showcase images on startup
+loadShowcaseImages();
 
 // --- POST PROCESSING ---
 const renderScene = new RenderPass(scene, camera);
@@ -1146,8 +1261,9 @@ const guiControls = {
     performanceMode: CONFIG.performanceMode,
     uncapFPS: CONFIG.uncapFPS,
 
-    // === Reward Image ===
+    // === Showcase ===
     imageDelay: CONFIG.imageDelay,
+    displayMode: CONFIG.showcase.displayMode,
 };
 
 // ========================================
@@ -1502,11 +1618,14 @@ performanceFolder.add(guiControls, 'uncapFPS')
 visibilityFolder.open();
 
 // ========================================
-// 6. REWARD IMAGE
+// 6. SHOWCASE
 // ========================================
-const rewardFolder = gui.addFolder('Reward Image');
-rewardFolder.add(guiControls, 'imageDelay', 0, 5000, 100).name('Delay (ms)').onChange(val => {
-    CONFIG.imageDelay = val;
+const showcaseFolder = gui.addFolder('Showcase');
+showcaseFolder.add(guiControls, 'imageDelay', 0, 5000, 100).name('Delay (ms)').onChange(val => {
+    CONFIG.showcase.delay = val;
+});
+showcaseFolder.add(guiControls, 'displayMode', ['sequential', 'random']).name('Display Mode').onChange(val => {
+    CONFIG.showcase.displayMode = val;
 });
 
 // === TEST OBJECTS (DEBUG) ===
@@ -1815,35 +1934,35 @@ function animate() {
     treeGroup.position.x += (targetPosition.x - treeGroup.position.x) * CONFIG.parallaxSmoothing;
     treeGroup.position.y += (targetPosition.y + CONFIG.treeYOffset - treeGroup.position.y) * CONFIG.parallaxSmoothing;
 
-    // --- REWARD BOX ANIMATION ---
-    if (rewardBox) {
+    // --- SHOWCASE BOX ANIMATION ---
+    if (showcaseBox) {
         // Only visible when flag is set (after delay in EXPLODING state)
-        if (rewardBoxShouldShow) {
-            rewardBoxTargetScale = 1;
-            rewardBoxTargetOpacity = 1;
+        if (showcaseBoxShouldShow) {
+            showcaseBoxTargetScale = 1;
+            showcaseBoxTargetOpacity = 1;
         } else {
-            rewardBoxTargetScale = 0;
-            rewardBoxTargetOpacity = 0;
+            showcaseBoxTargetScale = 0;
+            showcaseBoxTargetOpacity = 0;
         }
 
         // Animate scale (smooth interpolation) - tied to explosion speed
-        const currentScale = rewardBox.scale.x;
-        const newScale = currentScale + (rewardBoxTargetScale - currentScale) * CONFIG.animation.explosion.speed;
-        rewardBox.scale.setScalar(Math.max(0.001, newScale)); // Avoid zero scale
+        const currentScale = showcaseBox.scale.x;
+        const newScale = currentScale + (showcaseBoxTargetScale - currentScale) * CONFIG.animation.explosion.speed;
+        showcaseBox.scale.setScalar(Math.max(0.001, newScale)); // Avoid zero scale
 
         // Animate opacity for all materials
-        rewardBox.material.forEach(mat => {
-            mat.opacity += (rewardBoxTargetOpacity - mat.opacity) * CONFIG.reward.animation.fadeSpeed;
+        showcaseBox.material.forEach(mat => {
+            mat.opacity += (showcaseBoxTargetOpacity - mat.opacity) * CONFIG.showcase.animation.fadeSpeed;
         });
 
         // --- PARALLAX ROTATION (billboard with delayed offset) ---
-        const parallaxStrength = CONFIG.reward.parallax.rotationStrength;
-        const returnSpeed = CONFIG.reward.parallax.smoothing;
+        const parallaxStrength = CONFIG.showcase.parallax.rotationStrength;
+        const returnSpeed = CONFIG.showcase.parallax.smoothing;
 
         // Initialize parallax target if not exists
-        if (rewardBox.userData.parallaxTargetX === undefined) {
-            rewardBox.userData.parallaxTargetX = 0;
-            rewardBox.userData.parallaxTargetY = 0;
+        if (showcaseBox.userData.parallaxTargetX === undefined) {
+            showcaseBox.userData.parallaxTargetX = 0;
+            showcaseBox.userData.parallaxTargetY = 0;
         }
 
         // Mouse position sets the target rotation
@@ -1851,8 +1970,8 @@ function animate() {
         const mouseTargetY = -mouse.x * parallaxStrength;
 
         // Initialize smoothed mouse influence if not exists
-        if (rewardBox.userData.mouseInfluence === undefined) {
-            rewardBox.userData.mouseInfluence = 0;
+        if (showcaseBox.userData.mouseInfluence === undefined) {
+            showcaseBox.userData.mouseInfluence = 0;
         }
 
         // Determine if mouse is currently moving
@@ -1862,25 +1981,25 @@ function animate() {
         // Smoothly transition mouseInfluence (no jerks)
         const targetInfluence = isMouseMoving ? 1 : 0;
         const influenceSpeed = isMouseMoving ? 0.15 : 0.03; // Fast ramp up, slow fade out
-        rewardBox.userData.mouseInfluence += (targetInfluence - rewardBox.userData.mouseInfluence) * influenceSpeed;
+        showcaseBox.userData.mouseInfluence += (targetInfluence - showcaseBox.userData.mouseInfluence) * influenceSpeed;
 
         // Blend between center (0,0) and mouse position based on smoothed influence
-        rewardBox.userData.parallaxTargetX = mouseTargetX * rewardBox.userData.mouseInfluence;
-        rewardBox.userData.parallaxTargetY = mouseTargetY * rewardBox.userData.mouseInfluence;
+        showcaseBox.userData.parallaxTargetX = mouseTargetX * showcaseBox.userData.mouseInfluence;
+        showcaseBox.userData.parallaxTargetY = mouseTargetY * showcaseBox.userData.mouseInfluence;
 
         // Smoothly interpolate current rotation toward target
-        rewardBox.userData.currentRotationX += (rewardBox.userData.parallaxTargetX - rewardBox.userData.currentRotationX) * returnSpeed;
-        rewardBox.userData.currentRotationY += (rewardBox.userData.parallaxTargetY - rewardBox.userData.currentRotationY) * returnSpeed;
+        showcaseBox.userData.currentRotationX += (showcaseBox.userData.parallaxTargetX - showcaseBox.userData.currentRotationX) * returnSpeed;
+        showcaseBox.userData.currentRotationY += (showcaseBox.userData.parallaxTargetY - showcaseBox.userData.currentRotationY) * returnSpeed;
 
         // Make box face camera (billboard), then apply parallax offset
-        rewardBox.lookAt(camera.position);
+        showcaseBox.lookAt(camera.position);
 
         // Add the parallax rotation offset
-        rewardBox.rotation.x += rewardBox.userData.currentRotationX;
-        rewardBox.rotation.y += rewardBox.userData.currentRotationY;
+        showcaseBox.rotation.x += showcaseBox.userData.currentRotationX;
+        showcaseBox.rotation.y += showcaseBox.userData.currentRotationY;
 
         // Keep position fixed at center
-        rewardBox.position.set(0, CONFIG.treeYOffset, 0);
+        showcaseBox.position.set(0, CONFIG.treeYOffset, 0);
     }
 
     // Particle Logic - applies to both tree particles and test particles
@@ -2042,8 +2161,8 @@ function triggerExplosion(event) {
             returnTimer = null;
         }
 
-        // Reset reward box visibility flag
-        rewardBoxShouldShow = false;
+        // Reset showcase box visibility flag
+        showcaseBoxShouldShow = false;
 
         state = "RETURNING";
         updateCamera(state);
@@ -2068,17 +2187,21 @@ function triggerExplosion(event) {
         p.userData.individualParallaxShift.set(0, 0, 0);
     });
 
-    // Show reward box after delay
-    if (CONFIG.rewardImage) {
+    // Cycle to next showcase image and show box after delay
+    if (showcaseImagesLoaded && showcaseTextures.length > 0) {
+        // Get next image for this explosion
+        const nextTexture = getNextShowcaseImage();
+        updateShowcaseBoxTexture(nextTexture);
+
         setTimeout(() => {
             if (state === "EXPLODING") {
-                rewardBoxShouldShow = true;
+                showcaseBoxShouldShow = true;
             }
         }, CONFIG.imageDelay);
     }
 
     returnTimer = setTimeout(() => {
-        rewardBoxShouldShow = false;
+        showcaseBoxShouldShow = false;
         state = "RETURNING";
         updateCamera(state);
         // IDLE transition now happens automatically based on particle convergence
