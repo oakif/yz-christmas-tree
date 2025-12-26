@@ -1193,6 +1193,12 @@ explosionDistFolder.add(guiControls, 'explosionOffsetZ', -50, 50).name('Offset Z
 // ========================================
 const renderingFolder = gui.addFolder('Rendering & Visuals');
 
+// Exposure (tone mapping)
+renderingFolder.add(guiControls, 'toneMappingExposure', 0, 10, 0.1).name('Exposure').onChange(val => {
+    renderer.toneMappingExposure = val;
+    CONFIG.toneMappingExposure = val;
+});
+
 // Post Processing
 const postProcessingFolder = renderingFolder.addFolder('Post Processing');
 
@@ -1208,10 +1214,6 @@ postProcessingFolder.add(guiControls, 'bloomRadius', 0, 2, 0.01).name('Bloom Rad
 postProcessingFolder.add(guiControls, 'bloomThreshold', 0, 1, 0.01).name('Bloom Threshold').onChange(val => {
     bloomPass.threshold = val;
     CONFIG.bloomThreshold = val;
-});
-postProcessingFolder.add(guiControls, 'toneMappingExposure', 0, 10, 0.1).name('Exposure').onChange(val => {
-    renderer.toneMappingExposure = val;
-    CONFIG.toneMappingExposure = val;
 });
 
 // Environment
@@ -1230,80 +1232,80 @@ envFolder.addColor(guiControls, 'envBottomColor').name('Sky Bottom').onChange(va
 // Lighting
 const lightingFolder = renderingFolder.addFolder('Lighting');
 
-const ambientSubfolder = lightingFolder.addFolder('Ambient');
-ambientSubfolder.addColor(guiControls, 'ambientColor').name('Color').onChange(val => {
+// Ambient
+lightingFolder.addColor(guiControls, 'ambientColor').name('Ambient Color').onChange(val => {
     ambientLight.color.setHex(stringToHex(val));
     CONFIG.lighting.ambient.color = stringToHex(val);
 });
-ambientSubfolder.add(guiControls, 'ambientIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+lightingFolder.add(guiControls, 'ambientIntensity', 0, 5, 0.1).name('Ambient Intensity').onChange(val => {
     ambientLight.intensity = val;
     CONFIG.lighting.ambient.intensity = val;
 });
 
-const hemiSubfolder = lightingFolder.addFolder('Hemisphere');
-hemiSubfolder.addColor(guiControls, 'hemiSkyColor').name('Sky Color').onChange(val => {
+// Hemisphere
+lightingFolder.addColor(guiControls, 'hemiSkyColor').name('Hemi Sky Color').onChange(val => {
     hemiLight.color.setHex(stringToHex(val));
     CONFIG.lighting.hemisphere.skyColor = stringToHex(val);
 });
-hemiSubfolder.addColor(guiControls, 'hemiGroundColor').name('Ground Color').onChange(val => {
+lightingFolder.addColor(guiControls, 'hemiGroundColor').name('Hemi Ground Color').onChange(val => {
     hemiLight.groundColor.setHex(stringToHex(val));
     CONFIG.lighting.hemisphere.groundColor = stringToHex(val);
 });
-hemiSubfolder.add(guiControls, 'hemiIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+lightingFolder.add(guiControls, 'hemiIntensity', 0, 5, 0.1).name('Hemi Intensity').onChange(val => {
     hemiLight.intensity = val;
     CONFIG.lighting.hemisphere.intensity = val;
 });
 
-const keyLightSubfolder = lightingFolder.addFolder('Key Light');
-keyLightSubfolder.addColor(guiControls, 'keyLightColor').name('Color').onChange(val => {
+// Key Light
+lightingFolder.addColor(guiControls, 'keyLightColor').name('Key Light Color').onChange(val => {
     keyLight.color.setHex(stringToHex(val));
     CONFIG.lighting.keyLight.color = stringToHex(val);
 });
-keyLightSubfolder.add(guiControls, 'keyLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+lightingFolder.add(guiControls, 'keyLightIntensity', 0, 5, 0.1).name('Key Light Intensity').onChange(val => {
     keyLight.intensity = val;
     CONFIG.lighting.keyLight.intensity = val;
 });
 
-const fillLightSubfolder = lightingFolder.addFolder('Fill Light');
-fillLightSubfolder.addColor(guiControls, 'fillLightColor').name('Color').onChange(val => {
+// Fill Light
+lightingFolder.addColor(guiControls, 'fillLightColor').name('Fill Light Color').onChange(val => {
     fillLight.color.setHex(stringToHex(val));
     CONFIG.lighting.fillLight.color = stringToHex(val);
 });
-fillLightSubfolder.add(guiControls, 'fillLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+lightingFolder.add(guiControls, 'fillLightIntensity', 0, 5, 0.1).name('Fill Light Intensity').onChange(val => {
     fillLight.intensity = val;
     CONFIG.lighting.fillLight.intensity = val;
 });
 
-const rimLightSubfolder = lightingFolder.addFolder('Rim Light');
-rimLightSubfolder.addColor(guiControls, 'rimLightColor').name('Color').onChange(val => {
+// Rim Light
+lightingFolder.addColor(guiControls, 'rimLightColor').name('Rim Light Color').onChange(val => {
     rimLight.color.setHex(stringToHex(val));
     CONFIG.lighting.rimLight.color = stringToHex(val);
 });
-rimLightSubfolder.add(guiControls, 'rimLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+lightingFolder.add(guiControls, 'rimLightIntensity', 0, 5, 0.1).name('Rim Light Intensity').onChange(val => {
     rimLight.intensity = val;
     CONFIG.lighting.rimLight.intensity = val;
 });
 
-const overheadSubfolder = lightingFolder.addFolder('Overhead Light');
-overheadSubfolder.addColor(guiControls, 'overheadLightColor').name('Color').onChange(val => {
+// Overhead Light
+lightingFolder.addColor(guiControls, 'overheadLightColor').name('Overhead Color').onChange(val => {
     overheadLight.color.setHex(stringToHex(val));
     CONFIG.lighting.overheadLight.color = stringToHex(val);
 });
-overheadSubfolder.add(guiControls, 'overheadLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+lightingFolder.add(guiControls, 'overheadLightIntensity', 0, 5, 0.1).name('Overhead Intensity').onChange(val => {
     overheadLight.intensity = val;
     CONFIG.lighting.overheadLight.intensity = val;
 });
 
-const topGlowSubfolder = lightingFolder.addFolder('Top Glow');
-topGlowSubfolder.addColor(guiControls, 'topGlowColor').name('Color').onChange(val => {
+// Top Glow
+lightingFolder.addColor(guiControls, 'topGlowColor').name('Top Glow Color').onChange(val => {
     topGlow.color.setHex(stringToHex(val));
     CONFIG.lighting.topGlow.color = stringToHex(val);
 });
-topGlowSubfolder.add(guiControls, 'topGlowIntensity', 0, 10, 0.1).name('Intensity').onChange(val => {
+lightingFolder.add(guiControls, 'topGlowIntensity', 0, 10, 0.1).name('Top Glow Intensity').onChange(val => {
     topGlow.intensity = val;
     CONFIG.lighting.topGlow.intensity = val;
 });
-topGlowSubfolder.add(guiControls, 'topGlowRange', 0, 100, 1).name('Range').onChange(val => {
+lightingFolder.add(guiControls, 'topGlowRange', 0, 100, 1).name('Top Glow Range').onChange(val => {
     topGlow.distance = val;
     CONFIG.lighting.topGlow.range = val;
 });
@@ -1477,10 +1479,13 @@ function createGroupGUI(group, index) {
     groupFolder.addColor(group, 'color')
         .name('Base Color')
         .onChange(debouncedRebuildAll);
-    groupFolder.addColor(group, 'emissive')
+
+    // Advanced settings (collapsed by default)
+    const advancedFolder = groupFolder.addFolder('Advanced');
+    advancedFolder.addColor(group, 'emissive')
         .name('Emissive Color')
         .onChange(debouncedRebuildAll);
-    groupFolder.add(group, 'emissiveIntensity', 0, 2, 0.01)
+    advancedFolder.add(group, 'emissiveIntensity', 0, 2, 0.01)
         .name('Emissive Intensity')
         .onChange(debouncedRebuildAll);
 

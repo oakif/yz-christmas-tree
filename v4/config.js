@@ -83,7 +83,7 @@ export const CONFIG = {
         },
         parallax: {
             idle: {
-                enabled: false,                // Enable/disable idle parallax
+                enabled: true,                // Enable/disable idle parallax
                 strengthX: 1.5,               // Mouse Y -> rotation X
                 strengthY: 4.0,               // Mouse X -> rotation Y
                 smoothing: 0.05,              // Smoothness (lower = smoother)
@@ -91,7 +91,7 @@ export const CONFIG = {
                 positionStrengthY: 0,         // Mouse Y -> position movement (0 = disabled)
             },
             exploded: {
-                enabled: false,                // Enable/disable exploded parallax
+                enabled: true,                // Enable/disable exploded parallax
                 strengthX: 1.2,               // Mouse Y -> rotation X when exploded
                 strengthY: 1.2,               // Mouse X -> rotation Y when exploded
                 individualStrength: 0,        // Individual particle parallax when exploded
@@ -115,11 +115,11 @@ export const CONFIG = {
     rendering: {
         postProcessing: {
             bloom: {
-                strength: 0.35,       // Intensity of glow effect
-                radius: 0.5,          // Size of glow
-                threshold: 0.2,       // Brightness threshold to glow
+                strength: 1.00,       // Intensity of glow effect
+                radius: 0.65,          // Size of glow
+                threshold: 0.67,       // Brightness threshold to glow
             },
-            toneMappingExposure: 4.0,  // Higher = brighter scene (1.0-2.0 typical range)
+            toneMappingExposure: 2.0,  // Higher = brighter scene (1.0-2.0 typical range)
         },
         environment: {
             topColor: 0x0a0a15,      // Sky gradient top color (dark)
@@ -128,13 +128,13 @@ export const CONFIG = {
         },
         lighting: {
             ambient: {
-                color: 0x404050,   // Cool gray tone
-                intensity: 1.6,    // Base illumination brightness
+                color: 0xffffff,   // Cool gray tone
+                intensity: 0.8,    // Base illumination brightness
             },
             hemisphere: {
                 skyColor: 0x5577bb,    // Sky color (top hemisphere)
                 groundColor: 0x554433, // Ground color (bottom hemisphere)
-                intensity: 1.0,        // Brightness of hemisphere light
+                intensity: 0,        // Brightness of hemisphere light
             },
             keyLight: {
                 color: 0xffeedd,   // Warm directional light
@@ -143,22 +143,22 @@ export const CONFIG = {
             },
             fillLight: {
                 color: 0xccddff,   // Cool fill light
-                intensity: 1.5,    // Fill light strength
+                intensity: 0.0,    // Fill light strength
                 position: [-15, 10, -10],
             },
             rimLight: {
                 color: 0xffffff,   // White rim/back light
-                intensity: 0.2,    // Subtle edge definition
+                intensity: 0.3,    // Subtle edge definition
                 position: [0, -5, -25],
             },
             overheadLight: {
                 color: 0xffffff,   // White overhead light (like sun from above)
-                intensity: 0.6,    // Soft key light from above
+                intensity: 0.7,    // Soft key light from above
                 position: [0, 50, 0],
             },
             topGlow: {
                 color: 0xffffee,   // Warm glow at tree top
-                intensity: 0.8,    // Point light strength
+                intensity: 0.0,    // Point light strength
                 range: 30,         // Maximum distance this light reaches
             },
         },
@@ -169,12 +169,12 @@ export const CONFIG = {
     // ========================================
     ui: {
         visibility: {
-            showTreeParticles: false,  // Show/hide tree particles
-            showFPS: true,             // Show FPS counter
+            showTreeParticles: true,  // Show/hide tree particles
+            showFPS: false,             // Show FPS counter
         },
         performance: {
             performanceMode: false,  // true = optimized fake glass, false = full physical refraction
-            uncapFPS: true,         // true = uncapped FPS, false = vsync-capped
+            uncapFPS: false,         // true = uncapped FPS, false = vsync-capped
         },
     },
 
@@ -195,7 +195,7 @@ export const CONFIG = {
             count: 400,
             scale: 1.0,
             color: 0xfffee8,
-            materialType: 'glass',
+            materialType: 'satin',
         },
         {
             type: 'heart',
@@ -204,7 +204,7 @@ export const CONFIG = {
             color: 0xff0055,
             emissive: 0x220011,
             emissiveIntensity: 0.3,
-            materialType: 'frostedGlass',
+            materialType: 'satin',
             materialOverrides: {
                 transmission: 0.8,
             }
