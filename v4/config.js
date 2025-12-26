@@ -202,8 +202,8 @@ export const CONFIG = {
 
         // Parallax effect (lag when mouse moves, slowly returns to face viewer)
         parallax: {
-            rotationStrength: 0.5,       // How much rotation offset when mouse moves
-            smoothing: 0.2,             // How slowly it returns to face viewer (lower = slower)
+            rotationStrength: 0.6,       // How much rotation offset when mouse moves
+            smoothing: 0.1,             // How slowly it returns to face viewer (lower = slower)
         },
 
         // Visual effects

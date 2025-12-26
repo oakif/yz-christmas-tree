@@ -1635,12 +1635,19 @@ testObjectsFolder.open();
 
 // --- MOUSE PARALLAX ---
 const mouse = new THREE.Vector2(0, 0);
+const prevMouse = new THREE.Vector2(0, 0);
+const mouseVelocity = new THREE.Vector2(0, 0);
 const targetRotation = new THREE.Vector2(0, 0);
 const targetPosition = new THREE.Vector2(0, 0);
+let lastMouseMoveTime = 0;
 
 function updateMousePosition(event) {
+    prevMouse.copy(mouse);
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    mouseVelocity.x = mouse.x - prevMouse.x;
+    mouseVelocity.y = mouse.y - prevMouse.y;
+    lastMouseMoveTime = performance.now();
 }
 
 function resetMousePosition() {
@@ -1830,20 +1837,45 @@ function animate() {
         });
 
         // --- PARALLAX ROTATION (billboard with delayed offset) ---
-        // Calculate target rotation based on mouse position
         const parallaxStrength = CONFIG.reward.parallax.rotationStrength;
-        const targetRotX = mouse.y * parallaxStrength;
-        const targetRotY = -mouse.x * parallaxStrength;
+        const returnSpeed = CONFIG.reward.parallax.smoothing;
 
-        // Slowly interpolate current rotation toward target (creates delay effect)
-        const smoothing = CONFIG.reward.parallax.smoothing;
-        rewardBox.userData.currentRotationX += (targetRotX - rewardBox.userData.currentRotationX) * smoothing;
-        rewardBox.userData.currentRotationY += (targetRotY - rewardBox.userData.currentRotationY) * smoothing;
+        // Initialize parallax target if not exists
+        if (rewardBox.userData.parallaxTargetX === undefined) {
+            rewardBox.userData.parallaxTargetX = 0;
+            rewardBox.userData.parallaxTargetY = 0;
+        }
+
+        // Mouse position sets the target rotation
+        const mouseTargetX = mouse.y * parallaxStrength;
+        const mouseTargetY = -mouse.x * parallaxStrength;
+
+        // Initialize smoothed mouse influence if not exists
+        if (rewardBox.userData.mouseInfluence === undefined) {
+            rewardBox.userData.mouseInfluence = 0;
+        }
+
+        // Determine if mouse is currently moving
+        const timeSinceMove = performance.now() - lastMouseMoveTime;
+        const isMouseMoving = timeSinceMove < 100;
+
+        // Smoothly transition mouseInfluence (no jerks)
+        const targetInfluence = isMouseMoving ? 1 : 0;
+        const influenceSpeed = isMouseMoving ? 0.15 : 0.03; // Fast ramp up, slow fade out
+        rewardBox.userData.mouseInfluence += (targetInfluence - rewardBox.userData.mouseInfluence) * influenceSpeed;
+
+        // Blend between center (0,0) and mouse position based on smoothed influence
+        rewardBox.userData.parallaxTargetX = mouseTargetX * rewardBox.userData.mouseInfluence;
+        rewardBox.userData.parallaxTargetY = mouseTargetY * rewardBox.userData.mouseInfluence;
+
+        // Smoothly interpolate current rotation toward target
+        rewardBox.userData.currentRotationX += (rewardBox.userData.parallaxTargetX - rewardBox.userData.currentRotationX) * returnSpeed;
+        rewardBox.userData.currentRotationY += (rewardBox.userData.parallaxTargetY - rewardBox.userData.currentRotationY) * returnSpeed;
 
         // Make box face camera (billboard), then apply parallax offset
         rewardBox.lookAt(camera.position);
 
-        // Add the delayed parallax rotation offset
+        // Add the parallax rotation offset
         rewardBox.rotation.x += rewardBox.userData.currentRotationX;
         rewardBox.rotation.y += rewardBox.userData.currentRotationY;
 
