@@ -43,8 +43,6 @@ export const CONFIG = {
             count: 400,
             scale: 1.0,
             color: 0xfffee8,
-            // emissive: 0xfffea8,
-            // emissiveIntensity: 0.3,
             materialType: 'glass',
         },
         {
@@ -60,31 +58,10 @@ export const CONFIG = {
             }
         },
         {
-            type: 'sphere',
-            count: 1000,
-            scale: 0.25,
-            color: 0xd9b100,
-            emissive: 0x220011,
-            emissiveIntensity: 0.7,
-            materialType: 'glass',
-        },
-        // {
-        //     type: 'snowflake',
-        //     count: 1200,
-        //     scale: 1.0,
-        //     color: 0xf0f8ff,
-        //     emissive: 0x88aacc,
-        //     emissiveIntensity: 0.15,
-        //     metalness: 0.1,
-        //     roughness: 0.3
-        // },
-        {
             type: 'present',
             count: 200,
             scale: 1.0,
             color: 0x036d49,
-            // emissive: 0xff3333,
-            // emissiveIntensity: 0.05,
             materialType: 'satin',
         },
         {
@@ -92,19 +69,8 @@ export const CONFIG = {
             count: 200,
             scale: 1.0,
             color: 0xbaa6dff,
-            // emissive: 0x33ff33,
-            // emissiveIntensity: 0.05,
             materialType: 'satin',
         },
-        // {
-        //     type: 'present',
-        //     count: 134,
-        //     scale: 1.0,
-        //     color: 0x3333ff,
-        //     emissive: 0x3333ff,
-        //     emissiveIntensity: 0.05,
-        //     materialType: 'satin',
-        // }
     ],
 
     // ========================================
