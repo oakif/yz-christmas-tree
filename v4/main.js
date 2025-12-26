@@ -1232,9 +1232,9 @@ function debouncedRebuildAll() {
     }, 500);
 }
 
-// Object count slider (0-1000, replaces tree when > 0)
+// Object count slider (0-5000, replaces tree when > 0)
 guiControls.testObjectCount = 0;
-testObjectsFolder.add(guiControls, 'testObjectCount', 0, 1000, 1)
+testObjectsFolder.add(guiControls, 'testObjectCount', 0, 5000, 1)
     .name('Object Count')
     .onChange(val => {
         const count = Math.floor(val);
