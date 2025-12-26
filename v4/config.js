@@ -169,12 +169,12 @@ export const CONFIG = {
     // ========================================
     ui: {
         visibility: {
-            showTreeParticles: true,  // Show/hide tree particles
-            showFPS: false,            // Show FPS counter
+            showTreeParticles: false,  // Show/hide tree particles
+            showFPS: true,             // Show FPS counter
         },
         performance: {
             performanceMode: false,  // true = optimized fake glass, false = full physical refraction
-            uncapFPS: false,         // true = uncapped FPS, false = vsync-capped
+            uncapFPS: true,         // true = uncapped FPS, false = vsync-capped
         },
     },
 
