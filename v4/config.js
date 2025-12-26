@@ -4,7 +4,7 @@
  * STRUCTURE:
  * This configuration uses semantic grouping for better organization.
  * Settings are organized into: Scene Setup, Interaction, Animation & Effects,
- * Rendering & Visuals, UI & Performance, and Reward Image.
+ * Rendering & Visuals, UI & Performance, and Showcase.
  *
  * OBJECTS:
  * Define particles using the objects array. Each object creates a set of particles.
@@ -180,11 +180,13 @@ export const CONFIG = {
     },
 
     // ========================================
-    // 6. REWARD IMAGE
+    // 6. SHOWCASE
     // ========================================
-    reward: {
-        image: './images/cat.jpeg',       // Path to image displayed on explosion (empty = disabled)
-        delay: 0,      // Milliseconds before showing image after explosion
+    showcase: {
+        imageFolder: './images/',         // Base folder path for images
+        manifestFile: 'images.json',      // JSON file listing image filenames (in imageFolder)
+        displayMode: 'sequential',        // 'sequential' | 'random'
+        delay: 0,                         // Milliseconds before showing image after explosion
 
         // Box dimensions
         box: {
@@ -480,10 +482,16 @@ export const CONFIG = {
     get uncapFPS() { return this.ui.performance.uncapFPS; },
     set uncapFPS(v) { this.ui.performance.uncapFPS = v; },
 
-    // Reward Image
-    get rewardImage() { return this.reward.image; },
-    set rewardImage(v) { this.reward.image = v; },
+    // Showcase
+    get showcaseImageFolder() { return this.showcase.imageFolder; },
+    set showcaseImageFolder(v) { this.showcase.imageFolder = v; },
 
-    get imageDelay() { return this.reward.delay; },
-    set imageDelay(v) { this.reward.delay = v; },
+    get showcaseManifestFile() { return this.showcase.manifestFile; },
+    set showcaseManifestFile(v) { this.showcase.manifestFile = v; },
+
+    get showcaseDisplayMode() { return this.showcase.displayMode; },
+    set showcaseDisplayMode(v) { this.showcase.displayMode = v; },
+
+    get imageDelay() { return this.showcase.delay; },
+    set imageDelay(v) { this.showcase.delay = v; },
 };
