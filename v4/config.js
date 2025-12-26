@@ -185,12 +185,12 @@ export const CONFIG = {
     showcase: {
         imageFolder: './images/',         // Base folder path for images
         manifestFile: 'images.json',      // JSON file listing image filenames (in imageFolder)
-        displayMode: 'sequential',        // 'sequential' | 'random'
+        displayMode: 'random',        // 'sequential' | 'random'
         delay: 0,                         // Milliseconds before showing image after explosion
 
         // Box dimensions
         box: {
-            maxWidth: 40,                // Maximum width (should be < explosionInnerRadius)
+            maxWidth: 50,                // Maximum width (should be < explosionInnerRadius)
             maxHeight: 40,               // Maximum height (should be < explosionInnerRadius)
             thickness: 2,                // Depth of the box
             backColor: 0x333333,         // Solid color for back and sides

@@ -11,9 +11,6 @@ const container = document.getElementById('canvas-container');
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x050505, 0.015);
 
-// Separate scene for showcase (rendered without bloom/tone mapping)
-const showcaseScene = new THREE.Scene();
-
 // Create perspective camera
 const perspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 perspectiveCamera.position.x = CONFIG.cameraX;
@@ -256,7 +253,7 @@ function initializeShowcaseBox(texture) {
         currentRotationY: 0,
     };
 
-    showcaseScene.add(showcaseBox);
+    scene.add(showcaseBox);
 }
 
 // Get next showcase image based on display mode
@@ -2136,18 +2133,13 @@ function animate() {
         updateCamera(state);
     }
 
-    // Render main scene with bloom
-    composer.render();
-
-    // Render showcase separately without bloom or tone mapping (directly on top)
+    // When showcase is visible, skip bloom for correct depth and colors
     if (showcaseBox && showcaseBoxShouldShow) {
-        const savedToneMapping = renderer.toneMapping;
-        renderer.toneMapping = THREE.NoToneMapping;  // Disable tone mapping
-        renderer.autoClear = false;  // Don't clear the bloom render
-        renderer.clearDepth();  // Clear depth so showcase renders on top
-        renderer.render(showcaseScene, camera);  // Render showcase on top
-        renderer.autoClear = true;
-        renderer.toneMapping = savedToneMapping;  // Restore tone mapping
+        showcaseBox.visible = true;
+        renderer.render(scene, camera);
+    } else {
+        if (showcaseBox) showcaseBox.visible = false;
+        composer.render();
     }
 }
 animate();
