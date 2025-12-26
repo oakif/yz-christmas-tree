@@ -701,42 +701,48 @@ scene.add(topGlow);
 // Test objects that replace the tree, using the same distribution and animation logic
 const testParticles = [];
 
-// Shared configuration for all test objects
-const testObjectConfig = {
-    shape: 'star',
-    materialType: 'glass',
-    scale: 1.0,
-    color: '#ffffff',
-    emissive: '#000000',
-    emissiveIntensity: 0.0,
-    transmission: 0.9,
-    thickness: 10.0,
-    roughness: 0.15,
-    metalness: 0.0,
-    clearcoat: 0.0,
-    clearcoatRoughness: 0.0,
-    ior: 1.5,
-    envMapIntensity: 1.5,
-};
+// Array of test object groups (each group has its own config and particles)
+const testObjectGroups = [];
 
-function createTestParticle(explosionTarget) {
-    const geometry = getGeometryForType(testObjectConfig.shape);
+function createDefaultTestConfig() {
+    return {
+        count: 0,
+        shape: 'star',
+        materialType: 'glass',
+        scale: 1.0,
+        color: '#ffffff',
+        emissive: '#000000',
+        emissiveIntensity: 0.0,
+        transmission: 0.9,
+        thickness: 10.0,
+        roughness: 0.15,
+        metalness: 0.0,
+        clearcoat: 0.0,
+        clearcoatRoughness: 0.0,
+        ior: 1.5,
+        envMapIntensity: 1.5,
+        particles: []
+    };
+}
+
+function createTestParticle(config, explosionTarget) {
+    const geometry = getGeometryForType(config.shape);
 
     const materialDef = {
-        type: testObjectConfig.shape,
-        color: parseInt(testObjectConfig.color.replace('#', ''), 16),
-        emissive: parseInt(testObjectConfig.emissive.replace('#', ''), 16),
-        emissiveIntensity: testObjectConfig.emissiveIntensity,
-        materialType: testObjectConfig.materialType,
+        type: config.shape,
+        color: parseInt(config.color.replace('#', ''), 16),
+        emissive: parseInt(config.emissive.replace('#', ''), 16),
+        emissiveIntensity: config.emissiveIntensity,
+        materialType: config.materialType,
         materialOverrides: {
-            transmission: testObjectConfig.transmission,
-            thickness: testObjectConfig.thickness,
-            roughness: testObjectConfig.roughness,
-            metalness: testObjectConfig.metalness,
-            clearcoat: testObjectConfig.clearcoat,
-            clearcoatRoughness: testObjectConfig.clearcoatRoughness,
-            ior: testObjectConfig.ior,
-            envMapIntensity: testObjectConfig.envMapIntensity,
+            transmission: config.transmission,
+            thickness: config.thickness,
+            roughness: config.roughness,
+            metalness: config.metalness,
+            clearcoat: config.clearcoat,
+            clearcoatRoughness: config.clearcoatRoughness,
+            ior: config.ior,
+            envMapIntensity: config.envMapIntensity,
         }
     };
 
@@ -744,13 +750,11 @@ function createTestParticle(explosionTarget) {
     const material = getMaterialFromDefinition(materialDef);
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.scale.setScalar(testObjectConfig.scale);
+    mesh.scale.setScalar(config.scale);
 
-    // Use the same tree position sampling as the original tree
     const pos = sampleTreePosition();
     mesh.position.copy(pos);
 
-    // Same userData structure as tree particles
     mesh.userData = {
         originalPos: pos.clone(),
         explosionTarget: explosionTarget,
@@ -767,51 +771,12 @@ function createTestParticle(explosionTarget) {
     mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
 
     treeGroup.add(mesh);
+    testParticles.push(mesh);
     return mesh;
 }
 
-function setTestObjectCount(count) {
-    const currentCount = testParticles.length;
-
-    // Pre-generate explosion targets for all particles
-    const explosionCenter = CONFIG.explosionCenterMode === 'camera'
-        ? new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)
-        : new THREE.Vector3(0, 0, 0);
-    const explosionTargets = generateExplosionTargets(count, explosionCenter);
-
-    if (count > currentCount) {
-        // Add new particles
-        for (let i = currentCount; i < count; i++) {
-            const mesh = createTestParticle(explosionTargets[i]);
-            testParticles.push(mesh);
-        }
-    } else if (count < currentCount) {
-        // Remove excess particles
-        for (let i = currentCount - 1; i >= count; i--) {
-            const mesh = testParticles[i];
-            treeGroup.remove(mesh);
-            mesh.geometry.dispose();
-            mesh.material.dispose();
-        }
-        testParticles.length = count;
-    }
-
-    // Update explosion targets for all particles
-    testParticles.forEach((mesh, index) => {
-        mesh.userData.explosionTarget = explosionTargets[index];
-    });
-}
-
 function rebuildAllTestParticles() {
-    const count = testParticles.length;
-
-    // Pre-generate explosion targets
-    const explosionCenter = CONFIG.explosionCenterMode === 'camera'
-        ? new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)
-        : new THREE.Vector3(0, 0, 0);
-    const explosionTargets = generateExplosionTargets(count, explosionCenter);
-
-    // Remove all existing particles
+    // Remove all test particles
     testParticles.forEach(mesh => {
         treeGroup.remove(mesh);
         mesh.geometry.dispose();
@@ -819,11 +784,34 @@ function rebuildAllTestParticles() {
     });
     testParticles.length = 0;
 
-    // Recreate all particles with new config
-    for (let i = 0; i < count; i++) {
-        const mesh = createTestParticle(explosionTargets[i]);
-        testParticles.push(mesh);
-    }
+    // Clear all group particles
+    testObjectGroups.forEach(group => {
+        group.particles = [];
+    });
+
+    // Calculate total particle count
+    const totalCount = testObjectGroups.reduce((sum, group) => sum + group.count, 0);
+
+    // Generate explosion targets for all particles
+    const explosionCenter = CONFIG.explosionCenterMode === 'camera'
+        ? new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)
+        : new THREE.Vector3(0, 0, 0);
+    const explosionTargets = generateExplosionTargets(totalCount, explosionCenter);
+
+    // Recreate all particles for all groups
+    let targetIndex = 0;
+    testObjectGroups.forEach(group => {
+        for (let i = 0; i < group.count; i++) {
+            const mesh = createTestParticle(group, explosionTargets[targetIndex++]);
+            group.particles.push(mesh);
+        }
+    });
+
+    // Update tree visibility
+    const hasTestObjects = totalCount > 0;
+    particles.forEach(p => {
+        p.visible = !hasTestObjects && guiControls.showTreeParticles;
+    });
 }
 
 // --- DAT.GUI FOR ALL CONFIG SETTINGS ---
@@ -1211,8 +1199,9 @@ visibilityFolder.add(guiControls, 'showTreeParticles')
     .name('Show Tree Particles')
     .onChange(val => {
         // Only show tree particles if enabled AND no test objects are active
+        const hasTestObjects = testObjectGroups.reduce((sum, g) => sum + g.count, 0) > 0;
         particles.forEach(p => {
-            p.visible = val && guiControls.testObjectCount === 0;
+            p.visible = val && !hasTestObjects;
         });
     });
 
@@ -1252,68 +1241,86 @@ function debouncedRebuildAll() {
     }, 500);
 }
 
-// Object count slider (0-5000, replaces tree when > 0)
-guiControls.testObjectCount = 0;
-testObjectsFolder.add(guiControls, 'testObjectCount', 0, 5000, 1)
-    .name('Object Count')
-    .onChange(val => {
-        const count = Math.floor(val);
-        setTestObjectCount(count);
-        // Hide original tree particles when test objects are active
-        particles.forEach(p => {
-            p.visible = count === 0 && guiControls.showTreeParticles;
-        });
-    });
+// Add new object group button
+guiControls.addObjectGroup = function() {
+    const newGroup = createDefaultTestConfig();
+    testObjectGroups.push(newGroup);
+    createGroupGUI(newGroup, testObjectGroups.length - 1);
+    testObjectsFolder.open();
+};
+testObjectsFolder.add(guiControls, 'addObjectGroup').name('➕ Add Object Group');
 
-// Shape and material
-testObjectsFolder.add(testObjectConfig, 'shape', ['star', 'heart', 'snowflake', 'present', 'sphere'])
-    .name('Shape')
-    .onChange(debouncedRebuildAll);
-testObjectsFolder.add(testObjectConfig, 'materialType', ['matte', 'satin', 'metallic', 'glass', 'frostedGlass'])
-    .name('Material Type')
-    .onChange(debouncedRebuildAll);
-testObjectsFolder.add(testObjectConfig, 'scale', 0.1, 10, 0.1)
-    .name('Scale')
-    .onChange(debouncedRebuildAll);
+// Create GUI for an object group
+function createGroupGUI(group, index) {
+    const groupFolder = testObjectsFolder.addFolder(`Group ${index + 1}`);
 
-// Colors
-testObjectsFolder.addColor(testObjectConfig, 'color')
-    .name('Base Color')
-    .onChange(debouncedRebuildAll);
-testObjectsFolder.addColor(testObjectConfig, 'emissive')
-    .name('Emissive Color')
-    .onChange(debouncedRebuildAll);
-testObjectsFolder.add(testObjectConfig, 'emissiveIntensity', 0, 2, 0.01)
-    .name('Emissive Intensity')
-    .onChange(debouncedRebuildAll);
+    // Count
+    groupFolder.add(group, 'count', 0, 5000, 1)
+        .name('Count')
+        .onChange(debouncedRebuildAll);
 
-// Physical properties
-const testPhysicalFolder = testObjectsFolder.addFolder('Physical Properties');
-testPhysicalFolder.add(testObjectConfig, 'transmission', 0, 1, 0.01)
-    .name('Transmission')
-    .onChange(debouncedRebuildAll);
-testPhysicalFolder.add(testObjectConfig, 'thickness', 0, 50, 0.5)
-    .name('Thickness')
-    .onChange(debouncedRebuildAll);
-testPhysicalFolder.add(testObjectConfig, 'roughness', 0, 1, 0.01)
-    .name('Roughness')
-    .onChange(debouncedRebuildAll);
-testPhysicalFolder.add(testObjectConfig, 'metalness', 0, 1, 0.01)
-    .name('Metalness')
-    .onChange(debouncedRebuildAll);
-testPhysicalFolder.add(testObjectConfig, 'clearcoat', 0, 1, 0.01)
-    .name('Clearcoat')
-    .onChange(debouncedRebuildAll);
-testPhysicalFolder.add(testObjectConfig, 'clearcoatRoughness', 0, 1, 0.01)
-    .name('Clearcoat Roughness')
-    .onChange(debouncedRebuildAll);
-testPhysicalFolder.add(testObjectConfig, 'ior', 1.0, 2.5, 0.01)
-    .name('IOR')
-    .onChange(debouncedRebuildAll);
-testPhysicalFolder.add(testObjectConfig, 'envMapIntensity', 0, 5, 0.1)
-    .name('Env Map Intensity')
-    .onChange(debouncedRebuildAll);
-testPhysicalFolder.open();
+    // Shape and material
+    groupFolder.add(group, 'shape', ['star', 'heart', 'snowflake', 'present', 'sphere'])
+        .name('Shape')
+        .onChange(debouncedRebuildAll);
+    groupFolder.add(group, 'materialType', ['matte', 'satin', 'metallic', 'glass', 'frostedGlass'])
+        .name('Material Type')
+        .onChange(debouncedRebuildAll);
+    groupFolder.add(group, 'scale', 0.1, 10, 0.1)
+        .name('Scale')
+        .onChange(debouncedRebuildAll);
+
+    // Colors
+    groupFolder.addColor(group, 'color')
+        .name('Base Color')
+        .onChange(debouncedRebuildAll);
+    groupFolder.addColor(group, 'emissive')
+        .name('Emissive Color')
+        .onChange(debouncedRebuildAll);
+    groupFolder.add(group, 'emissiveIntensity', 0, 2, 0.01)
+        .name('Emissive Intensity')
+        .onChange(debouncedRebuildAll);
+
+    // Physical properties
+    const physicalFolder = groupFolder.addFolder('Physical Properties');
+    physicalFolder.add(group, 'transmission', 0, 1, 0.01)
+        .name('Transmission')
+        .onChange(debouncedRebuildAll);
+    physicalFolder.add(group, 'thickness', 0, 50, 0.5)
+        .name('Thickness')
+        .onChange(debouncedRebuildAll);
+    physicalFolder.add(group, 'roughness', 0, 1, 0.01)
+        .name('Roughness')
+        .onChange(debouncedRebuildAll);
+    physicalFolder.add(group, 'metalness', 0, 1, 0.01)
+        .name('Metalness')
+        .onChange(debouncedRebuildAll);
+    physicalFolder.add(group, 'clearcoat', 0, 1, 0.01)
+        .name('Clearcoat')
+        .onChange(debouncedRebuildAll);
+    physicalFolder.add(group, 'clearcoatRoughness', 0, 1, 0.01)
+        .name('Clearcoat Roughness')
+        .onChange(debouncedRebuildAll);
+    physicalFolder.add(group, 'ior', 1.0, 2.5, 0.01)
+        .name('IOR')
+        .onChange(debouncedRebuildAll);
+    physicalFolder.add(group, 'envMapIntensity', 0, 5, 0.1)
+        .name('Env Map Intensity')
+        .onChange(debouncedRebuildAll);
+
+    // Remove button
+    group.removeGroup = function() {
+        const idx = testObjectGroups.indexOf(group);
+        if (idx !== -1) {
+            testObjectGroups.splice(idx, 1);
+            gui.removeFolder(groupFolder);
+            debouncedRebuildAll();
+        }
+    };
+    groupFolder.add(group, 'removeGroup').name('🗑️ Remove Group');
+
+    groupFolder.open();
+}
 
 testObjectsFolder.open();
 
