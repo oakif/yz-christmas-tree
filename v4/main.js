@@ -1217,6 +1217,13 @@ const uiPerfFolder = gui.addFolder('UI & Performance');
 
 // Visibility
 const visibilityFolder = uiPerfFolder.addFolder('Visibility');
+
+// Set initial tree particles visibility based on config
+const initialHasTestObjects = testObjectGroups.reduce((sum, g) => sum + g.count, 0) > 0;
+particles.forEach(p => {
+    p.visible = CONFIG.showTreeParticles && !initialHasTestObjects;
+});
+
 visibilityFolder.add(guiControls, 'showTreeParticles')
     .name('Show Tree Particles')
     .onChange(val => {
@@ -1236,6 +1243,11 @@ const fpsCtx = fpsCanvas.getContext('2d');
 // Set canvas size
 fpsCanvas.width = 200;
 fpsCanvas.height = 60;
+
+// Set initial FPS counter visibility based on config
+if (CONFIG.showFPS) {
+    fpsCounter.classList.add('visible');
+}
 
 visibilityFolder.add(guiControls, 'showFPS')
     .name('Show FPS')
@@ -1443,7 +1455,7 @@ const fpsHistory = [];
 const maxFpsHistory = 100;
 
 function animate() {
-    if (guiControls.uncapFPS) {
+    if (CONFIG.uncapFPS) {
         setTimeout(animate, 0);
     } else {
         requestAnimationFrame(animate);
@@ -1520,7 +1532,7 @@ function animate() {
     // Parallax rotation and position of the tree group
     // Use different strengths for exploded vs idle/returning states
     const isExploding = state === "EXPLODING";
-    const parallaxActive = isExploding ? guiControls.explodedParallaxEnabled : guiControls.parallaxEnabled;
+    const parallaxActive = isExploding ? CONFIG.explodedParallaxEnabled : CONFIG.parallaxEnabled;
 
     if (parallaxActive) {
         const parallaxX = isExploding ? CONFIG.explodedParallaxStrengthX : CONFIG.parallaxStrengthX;
@@ -1560,7 +1572,7 @@ function animate() {
         }
         else if (state === "EXPLODING") {
             // Calculate parallax offset based on mouse position (if enabled)
-            if (guiControls.explodedParallaxEnabled) {
+            if (CONFIG.explodedParallaxEnabled) {
                 const parallaxX = mouse.x * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
                 const parallaxY = mouse.y * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
                 p.userData.individualParallaxShift.x += (parallaxX - p.userData.individualParallaxShift.x) * 0.08;
@@ -1621,7 +1633,7 @@ function animate() {
         }
         else if (state === "EXPLODING") {
             // Calculate parallax offset based on mouse position (if enabled)
-            if (guiControls.explodedParallaxEnabled) {
+            if (CONFIG.explodedParallaxEnabled) {
                 const parallaxX = mouse.x * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
                 const parallaxY = mouse.y * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
                 p.userData.individualParallaxShift.x += (parallaxX - p.userData.individualParallaxShift.x) * 0.08;
