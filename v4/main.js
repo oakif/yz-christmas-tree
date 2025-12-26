@@ -1206,6 +1206,8 @@ visibilityFolder.add(guiControls, 'showTreeParticles')
     });
 
 guiControls.showFPS = false;
+guiControls.uncapFPS = false;
+
 const fpsCounter = document.getElementById('fps-counter');
 const fpsText = document.getElementById('fps-text');
 const fpsCanvas = document.getElementById('fps-graph');
@@ -1224,6 +1226,9 @@ visibilityFolder.add(guiControls, 'showFPS')
             fpsCounter.classList.remove('visible');
         }
     });
+
+visibilityFolder.add(guiControls, 'uncapFPS')
+    .name('Uncap FPS');
 
 visibilityFolder.open();
 
@@ -1401,7 +1406,11 @@ const fpsHistory = [];
 const maxFpsHistory = 100;
 
 function animate() {
-    requestAnimationFrame(animate);
+    if (guiControls.uncapFPS) {
+        setTimeout(animate, 0);
+    } else {
+        requestAnimationFrame(animate);
+    }
 
     const time = Date.now();
 
