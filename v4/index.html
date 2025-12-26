@@ -29,12 +29,48 @@
             opacity: 1;
             transform: translate(-50%, -50%) scale(1);
         }
+
+        #fps-counter {
+            position: absolute;
+            top: 10px;
+            right: 260px;
+            color: #ffffff;
+            font-size: 14px;
+            font-family: monospace;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 10000;
+            pointer-events: none;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #fps-counter.visible {
+            display: flex;
+        }
+
+        #fps-text {
+            font-weight: bold;
+        }
+
+        #fps-graph {
+            width: 200px;
+            height: 60px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
     <img id="reward-image" alt="Surprise!">
+    <div id="fps-counter">
+        <div id="fps-text">FPS: 0</div>
+        <canvas id="fps-graph"></canvas>
+    </div>
 
     <script type="importmap">
         {
