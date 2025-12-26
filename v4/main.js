@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { GUI } from 'dat.gui';
 import { CONFIG } from './config.js';
 
 // --- SETUP SCENE ---
@@ -696,6 +697,132 @@ const topGlow = new THREE.PointLight(
 topGlow.position.set(0, CONFIG.treeHeight / 2 + 5, 0);
 scene.add(topGlow);
 
+// --- DAT.GUI FOR MATERIAL EXPERIMENTATION ---
+const gui = new GUI();
+document.body.appendChild(gui.domElement);
+gui.domElement.style.position = 'absolute';
+gui.domElement.style.top = '10px';
+gui.domElement.style.right = '10px';
+gui.domElement.style.zIndex = '10000';
+
+// Material experiment settings
+const materialExperiment = {
+    // Glass properties
+    glassTransmission: 0.9,
+    glassThickness: 10.0,
+    glassRoughness: 0.05,
+    glassClearcoat: 0.2,
+    glassClearcoatRoughness: 0.3,
+    glassReflectivity: 0.8,
+    glassIOR: 1.5,
+    glassEnvMapIntensity: 1.5,
+
+    // Frosted glass properties
+    frostedTransmission: 0.8,
+    frostedThickness: 5.0,
+    frostedRoughness: 0.4,
+    frostedClearcoat: 0.15,
+    frostedClearcoatRoughness: 0.5,
+    frostedReflectivity: 0.5,
+
+    // Colors (hex strings for dat.GUI)
+    glassColor: '#fffee8',
+    frostedColor: '#ff0055',
+    frostedEmissive: '#220011',
+    frostedEmissiveIntensity: 0.3,
+
+    // Apply changes
+    applyChanges: function() {
+        refreshAllMaterials();
+    }
+};
+
+// Glass Material folder
+const glassFolder = gui.addFolder('Glass Material (Stars)');
+glassFolder.add(materialExperiment, 'glassTransmission', 0, 1, 0.01).name('Transmission');
+glassFolder.add(materialExperiment, 'glassThickness', 0, 50, 0.5).name('Thickness');
+glassFolder.add(materialExperiment, 'glassRoughness', 0, 1, 0.01).name('Roughness');
+glassFolder.add(materialExperiment, 'glassClearcoat', 0, 1, 0.01).name('Clearcoat');
+glassFolder.add(materialExperiment, 'glassClearcoatRoughness', 0, 1, 0.01).name('Clearcoat Roughness');
+glassFolder.add(materialExperiment, 'glassReflectivity', 0, 1, 0.01).name('Reflectivity');
+glassFolder.add(materialExperiment, 'glassIOR', 1.0, 2.5, 0.01).name('IOR');
+glassFolder.add(materialExperiment, 'glassEnvMapIntensity', 0, 5, 0.1).name('Env Map Intensity');
+glassFolder.addColor(materialExperiment, 'glassColor').name('Color');
+glassFolder.open();
+
+// Frosted Glass Material folder
+const frostedFolder = gui.addFolder('Frosted Glass (Hearts)');
+frostedFolder.add(materialExperiment, 'frostedTransmission', 0, 1, 0.01).name('Transmission');
+frostedFolder.add(materialExperiment, 'frostedThickness', 0, 50, 0.5).name('Thickness');
+frostedFolder.add(materialExperiment, 'frostedRoughness', 0, 1, 0.01).name('Roughness');
+frostedFolder.add(materialExperiment, 'frostedClearcoat', 0, 1, 0.01).name('Clearcoat');
+frostedFolder.add(materialExperiment, 'frostedClearcoatRoughness', 0, 1, 0.01).name('Clearcoat Roughness');
+frostedFolder.add(materialExperiment, 'frostedReflectivity', 0, 1, 0.01).name('Reflectivity');
+frostedFolder.addColor(materialExperiment, 'frostedColor').name('Color');
+frostedFolder.addColor(materialExperiment, 'frostedEmissive').name('Emissive');
+frostedFolder.add(materialExperiment, 'frostedEmissiveIntensity', 0, 1, 0.01).name('Emissive Intensity');
+frostedFolder.open();
+
+// Apply button
+gui.add(materialExperiment, 'applyChanges').name('🔄 Apply Changes');
+
+// Function to refresh materials with current GUI values
+function refreshAllMaterials() {
+    materialCache.clear();
+
+    particles.forEach((particle, index) => {
+        // Find which object type this particle belongs to
+        let currentIndex = 0;
+        let objectDef = null;
+
+        for (const obj of CONFIG.objects) {
+            if (index < currentIndex + obj.count) {
+                objectDef = obj;
+                break;
+            }
+            currentIndex += obj.count;
+        }
+
+        if (!objectDef) return;
+
+        // Create modified definition with GUI values
+        const modifiedDef = { ...objectDef };
+
+        if (objectDef.materialType === 'glass') {
+            modifiedDef.color = parseInt(materialExperiment.glassColor.replace('#', ''), 16);
+            modifiedDef.materialOverrides = {
+                transmission: materialExperiment.glassTransmission,
+                thickness: materialExperiment.glassThickness,
+                roughness: materialExperiment.glassRoughness,
+                clearcoat: materialExperiment.glassClearcoat,
+                clearcoatRoughness: materialExperiment.glassClearcoatRoughness,
+                reflectivity: materialExperiment.glassReflectivity,
+                ior: materialExperiment.glassIOR,
+                envMapIntensity: materialExperiment.glassEnvMapIntensity,
+            };
+        } else if (objectDef.materialType === 'frostedGlass') {
+            modifiedDef.color = parseInt(materialExperiment.frostedColor.replace('#', ''), 16);
+            modifiedDef.emissive = parseInt(materialExperiment.frostedEmissive.replace('#', ''), 16);
+            modifiedDef.emissiveIntensity = materialExperiment.frostedEmissiveIntensity;
+            modifiedDef.materialOverrides = {
+                transmission: materialExperiment.frostedTransmission,
+                thickness: materialExperiment.frostedThickness,
+                roughness: materialExperiment.frostedRoughness,
+                clearcoat: materialExperiment.frostedClearcoat,
+                clearcoatRoughness: materialExperiment.frostedClearcoatRoughness,
+                reflectivity: materialExperiment.frostedReflectivity,
+            };
+        }
+
+        // Dispose old material and create new one
+        const oldMaterial = particle.material;
+        particle.material = getMaterialFromDefinition(modifiedDef);
+        oldMaterial.dispose();
+    });
+
+    console.log('Materials refreshed with new settings!');
+}
+
 // --- MOUSE PARALLAX ---
 const mouse = new THREE.Vector2(0, 0);
 const targetRotation = new THREE.Vector2(0, 0);
@@ -857,6 +984,12 @@ animate();
 let returnTimer = null;
 
 function triggerExplosion(event) {
+    // Ignore clicks on dat.GUI elements
+    const target = event.target;
+    if (target.closest('.dg')) {
+        return; // Click was on GUI, ignore it
+    }
+
     // Only prevent default on touch events to avoid scroll/zoom
     // Don't prevent on mouse events as it breaks mousemove tracking
     if (event.type === 'touchstart') {
