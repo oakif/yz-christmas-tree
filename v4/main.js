@@ -1025,6 +1025,8 @@ explosionAnimFolder.add(guiControls, 'holdDuration', 1000, 60000, 1000).name('Ho
 
 // === PARALLAX - IDLE/RETURNING ===
 const parallaxFolder = gui.addFolder('Parallax - Idle');
+guiControls.parallaxEnabled = true;
+parallaxFolder.add(guiControls, 'parallaxEnabled').name('Enabled');
 parallaxFolder.add(guiControls, 'parallaxStrengthX', 0, 10, 0.1).name('Strength X').onChange(val => {
     CONFIG.parallaxStrengthX = val;
 });
@@ -1043,6 +1045,8 @@ parallaxFolder.add(guiControls, 'parallaxPositionStrengthY', -5, 5, 0.1).name('P
 
 // === PARALLAX - EXPLODED ===
 const explodedParallaxFolder = gui.addFolder('Parallax - Exploded');
+guiControls.explodedParallaxEnabled = true;
+explodedParallaxFolder.add(guiControls, 'explodedParallaxEnabled').name('Enabled');
 explodedParallaxFolder.add(guiControls, 'explodedParallaxStrengthX', 0, 10, 0.1).name('Strength X').onChange(val => {
     CONFIG.explodedParallaxStrengthX = val;
 });
@@ -1367,14 +1371,24 @@ function animate() {
 
     const time = Date.now();
 
-    // Parallax rotation and position of the tree group (always active)
+    // Parallax rotation and position of the tree group
     // Use different strengths for exploded vs idle/returning states
-    const parallaxX = state === "EXPLODING" ? CONFIG.explodedParallaxStrengthX : CONFIG.parallaxStrengthX;
-    const parallaxY = state === "EXPLODING" ? CONFIG.explodedParallaxStrengthY : CONFIG.parallaxStrengthY;
-    targetRotation.x = mouse.y * parallaxX;
-    targetRotation.y = mouse.x * parallaxY;
-    targetPosition.x = mouse.x * CONFIG.parallaxPositionStrengthX;
-    targetPosition.y = mouse.y * CONFIG.parallaxPositionStrengthY;
+    const isExploding = state === "EXPLODING";
+    const parallaxActive = isExploding ? guiControls.explodedParallaxEnabled : guiControls.parallaxEnabled;
+
+    if (parallaxActive) {
+        const parallaxX = isExploding ? CONFIG.explodedParallaxStrengthX : CONFIG.parallaxStrengthX;
+        const parallaxY = isExploding ? CONFIG.explodedParallaxStrengthY : CONFIG.parallaxStrengthY;
+        targetRotation.x = mouse.y * parallaxX;
+        targetRotation.y = mouse.x * parallaxY;
+        targetPosition.x = mouse.x * CONFIG.parallaxPositionStrengthX;
+        targetPosition.y = mouse.y * CONFIG.parallaxPositionStrengthY;
+    } else {
+        targetRotation.x = 0;
+        targetRotation.y = 0;
+        targetPosition.x = 0;
+        targetPosition.y = 0;
+    }
 
     treeGroup.rotation.x += (targetRotation.x - treeGroup.rotation.x) * CONFIG.parallaxSmoothing;
     treeGroup.rotation.y += (targetRotation.y - treeGroup.rotation.y) * CONFIG.parallaxSmoothing;
@@ -1399,13 +1413,16 @@ function animate() {
             p.position.z = p.userData.originalPos.z;
         }
         else if (state === "EXPLODING") {
-            // Calculate parallax offset based on mouse position
-            const parallaxX = mouse.x * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
-            const parallaxY = mouse.y * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
-
-            // Smoothly interpolate toward target parallax shift
-            p.userData.individualParallaxShift.x += (parallaxX - p.userData.individualParallaxShift.x) * 0.08;
-            p.userData.individualParallaxShift.y += (parallaxY - p.userData.individualParallaxShift.y) * 0.08;
+            // Calculate parallax offset based on mouse position (if enabled)
+            if (guiControls.explodedParallaxEnabled) {
+                const parallaxX = mouse.x * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
+                const parallaxY = mouse.y * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
+                p.userData.individualParallaxShift.x += (parallaxX - p.userData.individualParallaxShift.x) * 0.08;
+                p.userData.individualParallaxShift.y += (parallaxY - p.userData.individualParallaxShift.y) * 0.08;
+            } else {
+                p.userData.individualParallaxShift.x *= 0.95;
+                p.userData.individualParallaxShift.y *= 0.95;
+            }
 
             // Calculate target position with parallax applied
             const targetX = p.userData.explosionTarget.x + p.userData.individualParallaxShift.x;
@@ -1457,13 +1474,16 @@ function animate() {
             p.position.z = p.userData.originalPos.z;
         }
         else if (state === "EXPLODING") {
-            // Calculate parallax offset based on mouse position
-            const parallaxX = mouse.x * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
-            const parallaxY = mouse.y * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
-
-            // Smoothly interpolate toward target parallax shift
-            p.userData.individualParallaxShift.x += (parallaxX - p.userData.individualParallaxShift.x) * 0.08;
-            p.userData.individualParallaxShift.y += (parallaxY - p.userData.individualParallaxShift.y) * 0.08;
+            // Calculate parallax offset based on mouse position (if enabled)
+            if (guiControls.explodedParallaxEnabled) {
+                const parallaxX = mouse.x * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
+                const parallaxY = mouse.y * CONFIG.explodedParallaxStrength * p.userData.baseParallaxSensitivity;
+                p.userData.individualParallaxShift.x += (parallaxX - p.userData.individualParallaxShift.x) * 0.08;
+                p.userData.individualParallaxShift.y += (parallaxY - p.userData.individualParallaxShift.y) * 0.08;
+            } else {
+                p.userData.individualParallaxShift.x *= 0.95;
+                p.userData.individualParallaxShift.y *= 0.95;
+            }
 
             // Calculate target position with parallax applied
             const targetX = p.userData.explosionTarget.x + p.userData.individualParallaxShift.x;
