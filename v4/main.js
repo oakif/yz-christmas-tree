@@ -728,25 +728,46 @@ function createDefaultTestConfig() {
 function createTestParticle(config, explosionTarget) {
     const geometry = getGeometryForType(config.shape);
 
+    // Build material overrides - only include properties that are explicitly different from preset defaults
+    const materialOverrides = {};
+
+    // Only add override if the value differs from the default for this material type
+    const preset = CONFIG.materialPresets[config.materialType] || {};
+
+    if (config.transmission !== undefined && config.transmission !== (preset.transmission ?? CONFIG.materialDefaults.transmission)) {
+        materialOverrides.transmission = config.transmission;
+    }
+    if (config.thickness !== undefined && config.thickness !== (preset.thickness ?? CONFIG.materialDefaults.thickness)) {
+        materialOverrides.thickness = config.thickness;
+    }
+    if (config.roughness !== undefined && config.roughness !== (preset.roughness ?? CONFIG.materialDefaults.roughness)) {
+        materialOverrides.roughness = config.roughness;
+    }
+    if (config.metalness !== undefined && config.metalness !== (preset.metalness ?? CONFIG.materialDefaults.metalness)) {
+        materialOverrides.metalness = config.metalness;
+    }
+    if (config.clearcoat !== undefined && config.clearcoat !== (preset.clearcoat ?? CONFIG.materialDefaults.clearcoat)) {
+        materialOverrides.clearcoat = config.clearcoat;
+    }
+    if (config.clearcoatRoughness !== undefined && config.clearcoatRoughness !== (preset.clearcoatRoughness ?? CONFIG.materialDefaults.clearcoatRoughness)) {
+        materialOverrides.clearcoatRoughness = config.clearcoatRoughness;
+    }
+    if (config.ior !== undefined && config.ior !== (preset.ior ?? CONFIG.materialDefaults.ior)) {
+        materialOverrides.ior = config.ior;
+    }
+    if (config.envMapIntensity !== undefined && config.envMapIntensity !== (preset.envMapIntensity ?? CONFIG.materialDefaults.envMapIntensity)) {
+        materialOverrides.envMapIntensity = config.envMapIntensity;
+    }
+
     const materialDef = {
         type: config.shape,
         color: parseInt(config.color.replace('#', ''), 16),
         emissive: parseInt(config.emissive.replace('#', ''), 16),
         emissiveIntensity: config.emissiveIntensity,
         materialType: config.materialType,
-        materialOverrides: {
-            transmission: config.transmission,
-            thickness: config.thickness,
-            roughness: config.roughness,
-            metalness: config.metalness,
-            clearcoat: config.clearcoat,
-            clearcoatRoughness: config.clearcoatRoughness,
-            ior: config.ior,
-            envMapIntensity: config.envMapIntensity,
-        }
+        materialOverrides: materialOverrides
     };
 
-    materialCache.clear();
     const material = getMaterialFromDefinition(materialDef);
 
     const mesh = new THREE.Mesh(geometry, material);
@@ -775,7 +796,68 @@ function createTestParticle(config, explosionTarget) {
     return mesh;
 }
 
+function rebuildTreeParticles() {
+    // Remove all existing tree particles
+    particles.forEach(mesh => {
+        treeGroup.remove(mesh);
+        // Don't dispose shared geometries
+        mesh.material.dispose();
+    });
+    particles.length = 0;
+
+    // Calculate total particle count from CONFIG.objects
+    const totalParticleCount = CONFIG.objects.reduce((sum, obj) => sum + obj.count, 0);
+    const explosionCenter = CONFIG.explosionCenterMode === 'camera'
+        ? new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z)
+        : new THREE.Vector3(0, 0, 0);
+    const explosionTargets = generateExplosionTargets(totalParticleCount, explosionCenter);
+
+    let explosionTargetIndex = 0;
+
+    // Recreate particles from object definitions
+    CONFIG.objects.forEach(objectDef => {
+        const fullDef = validateAndMergeObjectDef(objectDef);
+        const geometry = getGeometryForType(fullDef.type);
+        const material = getMaterialFromDefinition(fullDef);
+
+        for (let i = 0; i < fullDef.count; i++) {
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.scale.setScalar(fullDef.scale);
+
+            const pos = sampleTreePosition();
+
+            mesh.userData = {
+                originalPos: pos.clone(),
+                explosionTarget: explosionTargets[explosionTargetIndex++],
+                velocity: new THREE.Vector3(0, 0, 0),
+                rotSpeed: {
+                    x: (Math.random() - 0.5) * 0.02,
+                    y: (Math.random() - 0.5) * 0.02,
+                    z: (Math.random() - 0.5) * 0.02
+                },
+                individualParallaxShift: new THREE.Vector3(0, 0, 0),
+                baseParallaxSensitivity: 0.5 + Math.random() * 1.0
+            };
+
+            mesh.position.copy(pos);
+            mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+
+            treeGroup.add(mesh);
+            particles.push(mesh);
+        }
+    });
+
+    // Update visibility based on test objects
+    const hasTestObjects = testObjectGroups.reduce((sum, g) => sum + g.count, 0) > 0;
+    particles.forEach(p => {
+        p.visible = CONFIG.showTreeParticles && !hasTestObjects;
+    });
+}
+
 function rebuildAllTestParticles() {
+    // Clear material cache before rebuilding
+    materialCache.clear();
+
     // Remove all test particles
     testParticles.forEach(mesh => {
         treeGroup.remove(mesh);
@@ -812,6 +894,12 @@ function rebuildAllTestParticles() {
     particles.forEach(p => {
         p.visible = !hasTestObjects && guiControls.showTreeParticles;
     });
+}
+
+function rebuildAllParticles() {
+    materialCache.clear();
+    rebuildTreeParticles();
+    rebuildAllTestParticles();
 }
 
 // --- DAT.GUI FOR ALL CONFIG SETTINGS ---
@@ -941,9 +1029,19 @@ const sceneSetupFolder = gui.addFolder('Scene Setup');
 
 // Tree Geometry
 const treeGeometryFolder = sceneSetupFolder.addFolder('Tree Geometry');
-treeGeometryFolder.add(guiControls, 'treeHeight', 10, 100).name('Height');
-treeGeometryFolder.add(guiControls, 'treeRadius', 5, 30).name('Radius');
-treeGeometryFolder.add(guiControls, 'treeYOffset', -20, 20).name('Y Offset');
+treeGeometryFolder.add(guiControls, 'treeHeight', 10, 100).name('Height').onChange(val => {
+    CONFIG.treeHeight = val;
+    // Tree geometry changes require full particle regeneration
+    rebuildAllParticles();
+});
+treeGeometryFolder.add(guiControls, 'treeRadius', 5, 30).name('Radius').onChange(val => {
+    CONFIG.treeRadius = val;
+    rebuildAllParticles();
+});
+treeGeometryFolder.add(guiControls, 'treeYOffset', -20, 20).name('Y Offset').onChange(val => {
+    CONFIG.treeYOffset = val;
+    // Y offset can be updated directly without regeneration
+});
 
 // Camera & View
 const cameraFolder = sceneSetupFolder.addFolder('Camera & View');
@@ -1317,9 +1415,60 @@ function createGroupGUI(group, index) {
     groupFolder.add(group, 'shape', ['star', 'heart', 'snowflake', 'present', 'sphere'])
         .name('Shape')
         .onChange(debouncedRebuildAll);
+
+    // Physical properties folder (created before materialType so we can reference it)
+    const physicalFolder = groupFolder.addFolder('Physical Properties');
+    const transmissionCtrl = physicalFolder.add(group, 'transmission', 0, 1, 0.01)
+        .name('Transmission')
+        .onChange(debouncedRebuildAll);
+    const thicknessCtrl = physicalFolder.add(group, 'thickness', 0, 50, 0.5)
+        .name('Thickness')
+        .onChange(debouncedRebuildAll);
+    const roughnessCtrl = physicalFolder.add(group, 'roughness', 0, 1, 0.01)
+        .name('Roughness')
+        .onChange(debouncedRebuildAll);
+    const metalnessCtrl = physicalFolder.add(group, 'metalness', 0, 1, 0.01)
+        .name('Metalness')
+        .onChange(debouncedRebuildAll);
+    const clearcoatCtrl = physicalFolder.add(group, 'clearcoat', 0, 1, 0.01)
+        .name('Clearcoat')
+        .onChange(debouncedRebuildAll);
+    const clearcoatRoughnessCtrl = physicalFolder.add(group, 'clearcoatRoughness', 0, 1, 0.01)
+        .name('Clearcoat Roughness')
+        .onChange(debouncedRebuildAll);
+    const iorCtrl = physicalFolder.add(group, 'ior', 1.0, 2.5, 0.01)
+        .name('IOR')
+        .onChange(debouncedRebuildAll);
+    const envMapIntensityCtrl = physicalFolder.add(group, 'envMapIntensity', 0, 5, 0.1)
+        .name('Env Map Intensity')
+        .onChange(debouncedRebuildAll);
+
     groupFolder.add(group, 'materialType', ['matte', 'satin', 'metallic', 'glass', 'frostedGlass'])
         .name('Material Type')
-        .onChange(debouncedRebuildAll);
+        .onChange(val => {
+            // Reset material properties to new preset defaults
+            const preset = CONFIG.materialPresets[val] || {};
+            group.transmission = preset.transmission ?? CONFIG.materialDefaults.transmission;
+            group.thickness = preset.thickness ?? CONFIG.materialDefaults.thickness;
+            group.roughness = preset.roughness ?? CONFIG.materialDefaults.roughness;
+            group.metalness = preset.metalness ?? CONFIG.materialDefaults.metalness;
+            group.clearcoat = preset.clearcoat ?? CONFIG.materialDefaults.clearcoat;
+            group.clearcoatRoughness = preset.clearcoatRoughness ?? CONFIG.materialDefaults.clearcoatRoughness;
+            group.ior = preset.ior ?? CONFIG.materialDefaults.ior;
+            group.envMapIntensity = preset.envMapIntensity ?? CONFIG.materialDefaults.envMapIntensity;
+
+            // Update GUI controllers to reflect new values
+            transmissionCtrl.updateDisplay();
+            thicknessCtrl.updateDisplay();
+            roughnessCtrl.updateDisplay();
+            metalnessCtrl.updateDisplay();
+            clearcoatCtrl.updateDisplay();
+            clearcoatRoughnessCtrl.updateDisplay();
+            iorCtrl.updateDisplay();
+            envMapIntensityCtrl.updateDisplay();
+
+            debouncedRebuildAll();
+        });
     groupFolder.add(group, 'scale', 0.1, 10, 0.1)
         .name('Scale')
         .onChange(debouncedRebuildAll);
@@ -1333,33 +1482,6 @@ function createGroupGUI(group, index) {
         .onChange(debouncedRebuildAll);
     groupFolder.add(group, 'emissiveIntensity', 0, 2, 0.01)
         .name('Emissive Intensity')
-        .onChange(debouncedRebuildAll);
-
-    // Physical properties
-    const physicalFolder = groupFolder.addFolder('Physical Properties');
-    physicalFolder.add(group, 'transmission', 0, 1, 0.01)
-        .name('Transmission')
-        .onChange(debouncedRebuildAll);
-    physicalFolder.add(group, 'thickness', 0, 50, 0.5)
-        .name('Thickness')
-        .onChange(debouncedRebuildAll);
-    physicalFolder.add(group, 'roughness', 0, 1, 0.01)
-        .name('Roughness')
-        .onChange(debouncedRebuildAll);
-    physicalFolder.add(group, 'metalness', 0, 1, 0.01)
-        .name('Metalness')
-        .onChange(debouncedRebuildAll);
-    physicalFolder.add(group, 'clearcoat', 0, 1, 0.01)
-        .name('Clearcoat')
-        .onChange(debouncedRebuildAll);
-    physicalFolder.add(group, 'clearcoatRoughness', 0, 1, 0.01)
-        .name('Clearcoat Roughness')
-        .onChange(debouncedRebuildAll);
-    physicalFolder.add(group, 'ior', 1.0, 2.5, 0.01)
-        .name('IOR')
-        .onChange(debouncedRebuildAll);
-    physicalFolder.add(group, 'envMapIntensity', 0, 5, 0.1)
-        .name('Env Map Intensity')
         .onChange(debouncedRebuildAll);
 
     // Remove button

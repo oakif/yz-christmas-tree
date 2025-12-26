@@ -83,7 +83,7 @@ export const CONFIG = {
         },
         parallax: {
             idle: {
-                enabled: true,                // Enable/disable idle parallax
+                enabled: false,                // Enable/disable idle parallax
                 strengthX: 1.5,               // Mouse Y -> rotation X
                 strengthY: 4.0,               // Mouse X -> rotation Y
                 smoothing: 0.05,              // Smoothness (lower = smoother)
@@ -91,7 +91,7 @@ export const CONFIG = {
                 positionStrengthY: 0,         // Mouse Y -> position movement (0 = disabled)
             },
             exploded: {
-                enabled: true,                // Enable/disable exploded parallax
+                enabled: false,                // Enable/disable exploded parallax
                 strengthX: 1.2,               // Mouse Y -> rotation X when exploded
                 strengthY: 1.2,               // Mouse X -> rotation Y when exploded
                 individualStrength: 0,        // Individual particle parallax when exploded
