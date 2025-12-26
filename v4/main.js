@@ -697,7 +697,7 @@ const topGlow = new THREE.PointLight(
 topGlow.position.set(0, CONFIG.treeHeight / 2 + 5, 0);
 scene.add(topGlow);
 
-// --- DAT.GUI FOR MATERIAL EXPERIMENTATION ---
+// --- DAT.GUI FOR ALL CONFIG SETTINGS ---
 const gui = new GUI();
 document.body.appendChild(gui.domElement);
 gui.domElement.style.position = 'absolute';
@@ -705,9 +705,111 @@ gui.domElement.style.top = '10px';
 gui.domElement.style.right = '10px';
 gui.domElement.style.zIndex = '10000';
 
-// Material experiment settings
-const materialExperiment = {
-    // Glass properties
+// Helper to convert hex number to hex string for dat.GUI
+function hexToString(hex) {
+    return '#' + hex.toString(16).padStart(6, '0');
+}
+
+// Helper to convert hex string to number
+function stringToHex(str) {
+    return parseInt(str.replace('#', ''), 16);
+}
+
+// GUI controls object - uses hex strings for colors
+const guiControls = {
+    // Tree Geometry
+    treeHeight: CONFIG.treeHeight,
+    treeRadius: CONFIG.treeRadius,
+    treeYOffset: CONFIG.treeYOffset,
+
+    // Camera & View
+    cameraX: CONFIG.cameraX,
+    cameraY: CONFIG.cameraY,
+    cameraZ: CONFIG.cameraZ,
+    viewType: CONFIG.viewType,
+    explodedViewType: CONFIG.explodedViewType,
+    isometricZoom: CONFIG.isometricZoom,
+    isometricAngle: CONFIG.isometricAngle,
+
+    // Interaction
+    reassembleOnClick: CONFIG.reassembleOnClick,
+    resetMouseOnLeave: CONFIG.resetMouseOnLeave,
+
+    // Animation & Physics - Idle
+    idleFloatSpeed: CONFIG.idleFloatSpeed,
+    idleFloatAmount: CONFIG.idleFloatAmount,
+
+    // Animation & Physics - Explosion
+    animationSpeed: CONFIG.animationSpeed,
+    holdDuration: CONFIG.holdDuration,
+
+    // Parallax - Idle/Returning
+    parallaxStrengthX: CONFIG.parallaxStrengthX,
+    parallaxStrengthY: CONFIG.parallaxStrengthY,
+    parallaxSmoothing: CONFIG.parallaxSmoothing,
+    parallaxPositionStrengthX: CONFIG.parallaxPositionStrengthX,
+    parallaxPositionStrengthY: CONFIG.parallaxPositionStrengthY,
+
+    // Parallax - Exploded
+    explodedParallaxStrengthX: CONFIG.explodedParallaxStrengthX,
+    explodedParallaxStrengthY: CONFIG.explodedParallaxStrengthY,
+    explodedParallaxStrength: CONFIG.explodedParallaxStrength,
+
+    // Explosion Distribution
+    explosionInnerRadius: CONFIG.explosionInnerRadius,
+    explosionOuterRadius: CONFIG.explosionOuterRadius,
+    explosionCenterMode: CONFIG.explosionCenterMode,
+    explosionOffsetX: CONFIG.explosionOffsetX,
+    explosionOffsetY: CONFIG.explosionOffsetY,
+    explosionOffsetZ: CONFIG.explosionOffsetZ,
+
+    // Visual Effects - Bloom
+    bloomStrength: CONFIG.bloomStrength,
+    bloomRadius: CONFIG.bloomRadius,
+    bloomThreshold: CONFIG.bloomThreshold,
+    toneMappingExposure: CONFIG.toneMappingExposure,
+
+    // Visual Effects - Environment Map
+    envTopColor: hexToString(CONFIG.environmentMap.topColor),
+    envBottomColor: hexToString(CONFIG.environmentMap.bottomColor),
+
+    // Lighting - Ambient
+    ambientColor: hexToString(CONFIG.lighting.ambient.color),
+    ambientIntensity: CONFIG.lighting.ambient.intensity,
+
+    // Lighting - Hemisphere
+    hemiSkyColor: hexToString(CONFIG.lighting.hemisphere.skyColor),
+    hemiGroundColor: hexToString(CONFIG.lighting.hemisphere.groundColor),
+    hemiIntensity: CONFIG.lighting.hemisphere.intensity,
+
+    // Lighting - Key Light
+    keyLightColor: hexToString(CONFIG.lighting.keyLight.color),
+    keyLightIntensity: CONFIG.lighting.keyLight.intensity,
+
+    // Lighting - Fill Light
+    fillLightColor: hexToString(CONFIG.lighting.fillLight.color),
+    fillLightIntensity: CONFIG.lighting.fillLight.intensity,
+
+    // Lighting - Rim Light
+    rimLightColor: hexToString(CONFIG.lighting.rimLight.color),
+    rimLightIntensity: CONFIG.lighting.rimLight.intensity,
+
+    // Lighting - Overhead Light
+    overheadLightColor: hexToString(CONFIG.lighting.overheadLight.color),
+    overheadLightIntensity: CONFIG.lighting.overheadLight.intensity,
+
+    // Lighting - Top Glow
+    topGlowColor: hexToString(CONFIG.lighting.topGlow.color),
+    topGlowIntensity: CONFIG.lighting.topGlow.intensity,
+    topGlowRange: CONFIG.lighting.topGlow.range,
+
+    // Reward Image
+    imageDelay: CONFIG.imageDelay,
+
+    // Performance
+    performanceMode: CONFIG.performanceMode,
+
+    // Material experiment settings (glass/frosted glass)
     glassTransmission: 0.9,
     glassThickness: 10.0,
     glassRoughness: 0.05,
@@ -716,55 +818,318 @@ const materialExperiment = {
     glassReflectivity: 0.8,
     glassIOR: 1.5,
     glassEnvMapIntensity: 1.5,
-
-    // Frosted glass properties
+    glassColor: '#fffee8',
     frostedTransmission: 0.8,
     frostedThickness: 5.0,
     frostedRoughness: 0.4,
     frostedClearcoat: 0.15,
     frostedClearcoatRoughness: 0.5,
     frostedReflectivity: 0.5,
-
-    // Colors (hex strings for dat.GUI)
-    glassColor: '#fffee8',
     frostedColor: '#ff0055',
     frostedEmissive: '#220011',
     frostedEmissiveIntensity: 0.3,
 
-    // Apply changes
-    applyChanges: function() {
+    // Actions
+    applyMaterialChanges: function() {
         refreshAllMaterials();
     }
 };
 
+// === TREE GEOMETRY ===
+const treeFolder = gui.addFolder('Tree Geometry');
+treeFolder.add(guiControls, 'treeHeight', 10, 100).name('Height');
+treeFolder.add(guiControls, 'treeRadius', 5, 30).name('Radius');
+treeFolder.add(guiControls, 'treeYOffset', -20, 20).name('Y Offset');
+
+// === CAMERA & VIEW ===
+const cameraFolder = gui.addFolder('Camera & View');
+cameraFolder.add(guiControls, 'cameraX', -50, 50).name('Camera X').onChange(val => {
+    perspectiveCamera.position.x = val;
+    CONFIG.cameraX = val;
+});
+cameraFolder.add(guiControls, 'cameraY', -50, 50).name('Camera Y').onChange(val => {
+    perspectiveCamera.position.y = val;
+    CONFIG.cameraY = val;
+});
+cameraFolder.add(guiControls, 'cameraZ', -50, 50).name('Camera Z').onChange(val => {
+    perspectiveCamera.position.z = val;
+    CONFIG.cameraZ = val;
+});
+cameraFolder.add(guiControls, 'viewType', ['perspective', 'isometric']).name('View Type').onChange(val => {
+    CONFIG.viewType = val;
+    if (state !== 'EXPLODING') {
+        camera = val === 'isometric' ? orthographicCamera : perspectiveCamera;
+        renderScene.camera = camera;
+    }
+});
+cameraFolder.add(guiControls, 'explodedViewType', ['perspective', 'isometric']).name('Exploded View').onChange(val => {
+    CONFIG.explodedViewType = val;
+    if (state === 'EXPLODING') {
+        camera = val === 'isometric' ? orthographicCamera : perspectiveCamera;
+        renderScene.camera = camera;
+    }
+});
+cameraFolder.add(guiControls, 'isometricZoom', 20, 150).name('Iso Zoom').onChange(val => {
+    CONFIG.isometricZoom = val;
+    const aspect = window.innerWidth / window.innerHeight;
+    orthographicCamera.left = val * aspect / -2;
+    orthographicCamera.right = val * aspect / 2;
+    orthographicCamera.top = val / 2;
+    orthographicCamera.bottom = val / -2;
+    orthographicCamera.updateProjectionMatrix();
+});
+cameraFolder.add(guiControls, 'isometricAngle', 0, 90).name('Iso Angle').onChange(val => {
+    CONFIG.isometricAngle = val;
+    const angleRad = val * Math.PI / 180;
+    const perspectiveDistance = Math.sqrt(
+        CONFIG.cameraX ** 2 + CONFIG.cameraY ** 2 + CONFIG.cameraZ ** 2
+    );
+    orthographicCamera.position.set(
+        CONFIG.cameraX,
+        perspectiveDistance * Math.sin(angleRad),
+        perspectiveDistance * Math.cos(angleRad)
+    );
+    orthographicCamera.lookAt(0, 0, 0);
+});
+
+// === INTERACTION ===
+const interactionFolder = gui.addFolder('Interaction');
+interactionFolder.add(guiControls, 'reassembleOnClick').name('Reassemble on Click').onChange(val => {
+    CONFIG.reassembleOnClick = val;
+});
+interactionFolder.add(guiControls, 'resetMouseOnLeave').name('Reset Mouse on Leave').onChange(val => {
+    CONFIG.resetMouseOnLeave = val;
+});
+
+// === ANIMATION - IDLE ===
+const idleAnimFolder = gui.addFolder('Animation - Idle');
+idleAnimFolder.add(guiControls, 'idleFloatSpeed', 0, 0.01, 0.0001).name('Float Speed').onChange(val => {
+    CONFIG.idleFloatSpeed = val;
+});
+idleAnimFolder.add(guiControls, 'idleFloatAmount', 0, 1, 0.01).name('Float Amount').onChange(val => {
+    CONFIG.idleFloatAmount = val;
+});
+
+// === ANIMATION - EXPLOSION ===
+const explosionAnimFolder = gui.addFolder('Animation - Explosion');
+explosionAnimFolder.add(guiControls, 'animationSpeed', 0.01, 0.5, 0.01).name('Speed').onChange(val => {
+    CONFIG.animationSpeed = val;
+});
+explosionAnimFolder.add(guiControls, 'holdDuration', 1000, 60000, 1000).name('Hold Duration (ms)').onChange(val => {
+    CONFIG.holdDuration = val;
+});
+
+// === PARALLAX - IDLE/RETURNING ===
+const parallaxFolder = gui.addFolder('Parallax - Idle');
+parallaxFolder.add(guiControls, 'parallaxStrengthX', 0, 10, 0.1).name('Strength X').onChange(val => {
+    CONFIG.parallaxStrengthX = val;
+});
+parallaxFolder.add(guiControls, 'parallaxStrengthY', 0, 10, 0.1).name('Strength Y').onChange(val => {
+    CONFIG.parallaxStrengthY = val;
+});
+parallaxFolder.add(guiControls, 'parallaxSmoothing', 0.01, 0.2, 0.01).name('Smoothing').onChange(val => {
+    CONFIG.parallaxSmoothing = val;
+});
+parallaxFolder.add(guiControls, 'parallaxPositionStrengthX', -5, 5, 0.1).name('Position X').onChange(val => {
+    CONFIG.parallaxPositionStrengthX = val;
+});
+parallaxFolder.add(guiControls, 'parallaxPositionStrengthY', -5, 5, 0.1).name('Position Y').onChange(val => {
+    CONFIG.parallaxPositionStrengthY = val;
+});
+
+// === PARALLAX - EXPLODED ===
+const explodedParallaxFolder = gui.addFolder('Parallax - Exploded');
+explodedParallaxFolder.add(guiControls, 'explodedParallaxStrengthX', 0, 10, 0.1).name('Strength X').onChange(val => {
+    CONFIG.explodedParallaxStrengthX = val;
+});
+explodedParallaxFolder.add(guiControls, 'explodedParallaxStrengthY', 0, 10, 0.1).name('Strength Y').onChange(val => {
+    CONFIG.explodedParallaxStrengthY = val;
+});
+explodedParallaxFolder.add(guiControls, 'explodedParallaxStrength', 0, 20, 0.5).name('Individual Strength').onChange(val => {
+    CONFIG.explodedParallaxStrength = val;
+});
+
+// === EXPLOSION DISTRIBUTION ===
+const explosionDistFolder = gui.addFolder('Explosion Distribution');
+explosionDistFolder.add(guiControls, 'explosionInnerRadius', 0, 100).name('Inner Radius').onChange(val => {
+    CONFIG.explosionInnerRadius = val;
+});
+explosionDistFolder.add(guiControls, 'explosionOuterRadius', 0, 150).name('Outer Radius').onChange(val => {
+    CONFIG.explosionOuterRadius = val;
+});
+explosionDistFolder.add(guiControls, 'explosionCenterMode', ['camera', 'tree']).name('Center Mode').onChange(val => {
+    CONFIG.explosionCenterMode = val;
+});
+explosionDistFolder.add(guiControls, 'explosionOffsetX', -50, 50).name('Offset X').onChange(val => {
+    CONFIG.explosionOffsetX = val;
+});
+explosionDistFolder.add(guiControls, 'explosionOffsetY', -50, 50).name('Offset Y').onChange(val => {
+    CONFIG.explosionOffsetY = val;
+});
+explosionDistFolder.add(guiControls, 'explosionOffsetZ', -50, 50).name('Offset Z').onChange(val => {
+    CONFIG.explosionOffsetZ = val;
+});
+
+// === VISUAL EFFECTS - BLOOM ===
+const bloomFolder = gui.addFolder('Visual Effects - Bloom');
+bloomFolder.add(guiControls, 'bloomStrength', 0, 3, 0.01).name('Strength').onChange(val => {
+    bloomPass.strength = val;
+    CONFIG.bloomStrength = val;
+});
+bloomFolder.add(guiControls, 'bloomRadius', 0, 2, 0.01).name('Radius').onChange(val => {
+    bloomPass.radius = val;
+    CONFIG.bloomRadius = val;
+});
+bloomFolder.add(guiControls, 'bloomThreshold', 0, 1, 0.01).name('Threshold').onChange(val => {
+    bloomPass.threshold = val;
+    CONFIG.bloomThreshold = val;
+});
+bloomFolder.add(guiControls, 'toneMappingExposure', 0, 10, 0.1).name('Exposure').onChange(val => {
+    renderer.toneMappingExposure = val;
+    CONFIG.toneMappingExposure = val;
+});
+
+// === VISUAL EFFECTS - ENVIRONMENT ===
+const envFolder = gui.addFolder('Visual Effects - Environment');
+envFolder.addColor(guiControls, 'envTopColor').name('Sky Top').onChange(val => {
+    CONFIG.environmentMap.topColor = stringToHex(val);
+    createEnvironmentMap();
+    scene.environment = envMap;
+});
+envFolder.addColor(guiControls, 'envBottomColor').name('Sky Bottom').onChange(val => {
+    CONFIG.environmentMap.bottomColor = stringToHex(val);
+    createEnvironmentMap();
+    scene.environment = envMap;
+});
+
+// === LIGHTING - AMBIENT ===
+const ambientFolder = gui.addFolder('Lighting - Ambient');
+ambientFolder.addColor(guiControls, 'ambientColor').name('Color').onChange(val => {
+    ambientLight.color.setHex(stringToHex(val));
+    CONFIG.lighting.ambient.color = stringToHex(val);
+});
+ambientFolder.add(guiControls, 'ambientIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+    ambientLight.intensity = val;
+    CONFIG.lighting.ambient.intensity = val;
+});
+
+// === LIGHTING - HEMISPHERE ===
+const hemiFolder = gui.addFolder('Lighting - Hemisphere');
+hemiFolder.addColor(guiControls, 'hemiSkyColor').name('Sky Color').onChange(val => {
+    hemiLight.color.setHex(stringToHex(val));
+    CONFIG.lighting.hemisphere.skyColor = stringToHex(val);
+});
+hemiFolder.addColor(guiControls, 'hemiGroundColor').name('Ground Color').onChange(val => {
+    hemiLight.groundColor.setHex(stringToHex(val));
+    CONFIG.lighting.hemisphere.groundColor = stringToHex(val);
+});
+hemiFolder.add(guiControls, 'hemiIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+    hemiLight.intensity = val;
+    CONFIG.lighting.hemisphere.intensity = val;
+});
+
+// === LIGHTING - KEY LIGHT ===
+const keyLightFolder = gui.addFolder('Lighting - Key Light');
+keyLightFolder.addColor(guiControls, 'keyLightColor').name('Color').onChange(val => {
+    keyLight.color.setHex(stringToHex(val));
+    CONFIG.lighting.keyLight.color = stringToHex(val);
+});
+keyLightFolder.add(guiControls, 'keyLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+    keyLight.intensity = val;
+    CONFIG.lighting.keyLight.intensity = val;
+});
+
+// === LIGHTING - FILL LIGHT ===
+const fillLightFolder = gui.addFolder('Lighting - Fill Light');
+fillLightFolder.addColor(guiControls, 'fillLightColor').name('Color').onChange(val => {
+    fillLight.color.setHex(stringToHex(val));
+    CONFIG.lighting.fillLight.color = stringToHex(val);
+});
+fillLightFolder.add(guiControls, 'fillLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+    fillLight.intensity = val;
+    CONFIG.lighting.fillLight.intensity = val;
+});
+
+// === LIGHTING - RIM LIGHT ===
+const rimLightFolder = gui.addFolder('Lighting - Rim Light');
+rimLightFolder.addColor(guiControls, 'rimLightColor').name('Color').onChange(val => {
+    rimLight.color.setHex(stringToHex(val));
+    CONFIG.lighting.rimLight.color = stringToHex(val);
+});
+rimLightFolder.add(guiControls, 'rimLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+    rimLight.intensity = val;
+    CONFIG.lighting.rimLight.intensity = val;
+});
+
+// === LIGHTING - OVERHEAD LIGHT ===
+const overheadFolder = gui.addFolder('Lighting - Overhead Light');
+overheadFolder.addColor(guiControls, 'overheadLightColor').name('Color').onChange(val => {
+    overheadLight.color.setHex(stringToHex(val));
+    CONFIG.lighting.overheadLight.color = stringToHex(val);
+});
+overheadFolder.add(guiControls, 'overheadLightIntensity', 0, 5, 0.1).name('Intensity').onChange(val => {
+    overheadLight.intensity = val;
+    CONFIG.lighting.overheadLight.intensity = val;
+});
+
+// === LIGHTING - TOP GLOW ===
+const topGlowFolder = gui.addFolder('Lighting - Top Glow');
+topGlowFolder.addColor(guiControls, 'topGlowColor').name('Color').onChange(val => {
+    topGlow.color.setHex(stringToHex(val));
+    CONFIG.lighting.topGlow.color = stringToHex(val);
+});
+topGlowFolder.add(guiControls, 'topGlowIntensity', 0, 10, 0.1).name('Intensity').onChange(val => {
+    topGlow.intensity = val;
+    CONFIG.lighting.topGlow.intensity = val;
+});
+topGlowFolder.add(guiControls, 'topGlowRange', 0, 100, 1).name('Range').onChange(val => {
+    topGlow.distance = val;
+    CONFIG.lighting.topGlow.range = val;
+});
+
+// === REWARD IMAGE ===
+const rewardFolder = gui.addFolder('Reward Image');
+rewardFolder.add(guiControls, 'imageDelay', 0, 5000, 100).name('Delay (ms)').onChange(val => {
+    CONFIG.imageDelay = val;
+});
+
+// === PERFORMANCE ===
+const perfFolder = gui.addFolder('Performance');
+perfFolder.add(guiControls, 'performanceMode').name('Performance Mode').onChange(val => {
+    CONFIG.performanceMode = val;
+});
+
+// === MATERIAL EXPERIMENTS ===
+const materialExpFolder = gui.addFolder('Material Experiments');
+
 // Glass Material folder
-const glassFolder = gui.addFolder('Glass Material (Stars)');
-glassFolder.add(materialExperiment, 'glassTransmission', 0, 1, 0.01).name('Transmission');
-glassFolder.add(materialExperiment, 'glassThickness', 0, 50, 0.5).name('Thickness');
-glassFolder.add(materialExperiment, 'glassRoughness', 0, 1, 0.01).name('Roughness');
-glassFolder.add(materialExperiment, 'glassClearcoat', 0, 1, 0.01).name('Clearcoat');
-glassFolder.add(materialExperiment, 'glassClearcoatRoughness', 0, 1, 0.01).name('Clearcoat Roughness');
-glassFolder.add(materialExperiment, 'glassReflectivity', 0, 1, 0.01).name('Reflectivity');
-glassFolder.add(materialExperiment, 'glassIOR', 1.0, 2.5, 0.01).name('IOR');
-glassFolder.add(materialExperiment, 'glassEnvMapIntensity', 0, 5, 0.1).name('Env Map Intensity');
-glassFolder.addColor(materialExperiment, 'glassColor').name('Color');
+const glassFolder = materialExpFolder.addFolder('Glass Material (Stars)');
+glassFolder.add(guiControls, 'glassTransmission', 0, 1, 0.01).name('Transmission');
+glassFolder.add(guiControls, 'glassThickness', 0, 50, 0.5).name('Thickness');
+glassFolder.add(guiControls, 'glassRoughness', 0, 1, 0.01).name('Roughness');
+glassFolder.add(guiControls, 'glassClearcoat', 0, 1, 0.01).name('Clearcoat');
+glassFolder.add(guiControls, 'glassClearcoatRoughness', 0, 1, 0.01).name('Clearcoat Roughness');
+glassFolder.add(guiControls, 'glassReflectivity', 0, 1, 0.01).name('Reflectivity');
+glassFolder.add(guiControls, 'glassIOR', 1.0, 2.5, 0.01).name('IOR');
+glassFolder.add(guiControls, 'glassEnvMapIntensity', 0, 5, 0.1).name('Env Map Intensity');
+glassFolder.addColor(guiControls, 'glassColor').name('Color');
 glassFolder.open();
 
 // Frosted Glass Material folder
-const frostedFolder = gui.addFolder('Frosted Glass (Hearts)');
-frostedFolder.add(materialExperiment, 'frostedTransmission', 0, 1, 0.01).name('Transmission');
-frostedFolder.add(materialExperiment, 'frostedThickness', 0, 50, 0.5).name('Thickness');
-frostedFolder.add(materialExperiment, 'frostedRoughness', 0, 1, 0.01).name('Roughness');
-frostedFolder.add(materialExperiment, 'frostedClearcoat', 0, 1, 0.01).name('Clearcoat');
-frostedFolder.add(materialExperiment, 'frostedClearcoatRoughness', 0, 1, 0.01).name('Clearcoat Roughness');
-frostedFolder.add(materialExperiment, 'frostedReflectivity', 0, 1, 0.01).name('Reflectivity');
-frostedFolder.addColor(materialExperiment, 'frostedColor').name('Color');
-frostedFolder.addColor(materialExperiment, 'frostedEmissive').name('Emissive');
-frostedFolder.add(materialExperiment, 'frostedEmissiveIntensity', 0, 1, 0.01).name('Emissive Intensity');
+const frostedFolder = materialExpFolder.addFolder('Frosted Glass (Hearts)');
+frostedFolder.add(guiControls, 'frostedTransmission', 0, 1, 0.01).name('Transmission');
+frostedFolder.add(guiControls, 'frostedThickness', 0, 50, 0.5).name('Thickness');
+frostedFolder.add(guiControls, 'frostedRoughness', 0, 1, 0.01).name('Roughness');
+frostedFolder.add(guiControls, 'frostedClearcoat', 0, 1, 0.01).name('Clearcoat');
+frostedFolder.add(guiControls, 'frostedClearcoatRoughness', 0, 1, 0.01).name('Clearcoat Roughness');
+frostedFolder.add(guiControls, 'frostedReflectivity', 0, 1, 0.01).name('Reflectivity');
+frostedFolder.addColor(guiControls, 'frostedColor').name('Color');
+frostedFolder.addColor(guiControls, 'frostedEmissive').name('Emissive');
+frostedFolder.add(guiControls, 'frostedEmissiveIntensity', 0, 1, 0.01).name('Emissive Intensity');
 frostedFolder.open();
 
-// Apply button
-gui.add(materialExperiment, 'applyChanges').name('🔄 Apply Changes');
+// Apply button for material changes
+materialExpFolder.add(guiControls, 'applyMaterialChanges').name('🔄 Apply Material Changes');
 
 // Function to refresh materials with current GUI values
 function refreshAllMaterials() {
@@ -789,28 +1154,28 @@ function refreshAllMaterials() {
         const modifiedDef = { ...objectDef };
 
         if (objectDef.materialType === 'glass') {
-            modifiedDef.color = parseInt(materialExperiment.glassColor.replace('#', ''), 16);
+            modifiedDef.color = parseInt(guiControls.glassColor.replace('#', ''), 16);
             modifiedDef.materialOverrides = {
-                transmission: materialExperiment.glassTransmission,
-                thickness: materialExperiment.glassThickness,
-                roughness: materialExperiment.glassRoughness,
-                clearcoat: materialExperiment.glassClearcoat,
-                clearcoatRoughness: materialExperiment.glassClearcoatRoughness,
-                reflectivity: materialExperiment.glassReflectivity,
-                ior: materialExperiment.glassIOR,
-                envMapIntensity: materialExperiment.glassEnvMapIntensity,
+                transmission: guiControls.glassTransmission,
+                thickness: guiControls.glassThickness,
+                roughness: guiControls.glassRoughness,
+                clearcoat: guiControls.glassClearcoat,
+                clearcoatRoughness: guiControls.glassClearcoatRoughness,
+                reflectivity: guiControls.glassReflectivity,
+                ior: guiControls.glassIOR,
+                envMapIntensity: guiControls.glassEnvMapIntensity,
             };
         } else if (objectDef.materialType === 'frostedGlass') {
-            modifiedDef.color = parseInt(materialExperiment.frostedColor.replace('#', ''), 16);
-            modifiedDef.emissive = parseInt(materialExperiment.frostedEmissive.replace('#', ''), 16);
-            modifiedDef.emissiveIntensity = materialExperiment.frostedEmissiveIntensity;
+            modifiedDef.color = parseInt(guiControls.frostedColor.replace('#', ''), 16);
+            modifiedDef.emissive = parseInt(guiControls.frostedEmissive.replace('#', ''), 16);
+            modifiedDef.emissiveIntensity = guiControls.frostedEmissiveIntensity;
             modifiedDef.materialOverrides = {
-                transmission: materialExperiment.frostedTransmission,
-                thickness: materialExperiment.frostedThickness,
-                roughness: materialExperiment.frostedRoughness,
-                clearcoat: materialExperiment.frostedClearcoat,
-                clearcoatRoughness: materialExperiment.frostedClearcoatRoughness,
-                reflectivity: materialExperiment.frostedReflectivity,
+                transmission: guiControls.frostedTransmission,
+                thickness: guiControls.frostedThickness,
+                roughness: guiControls.frostedRoughness,
+                clearcoat: guiControls.frostedClearcoat,
+                clearcoatRoughness: guiControls.frostedClearcoatRoughness,
+                reflectivity: guiControls.frostedReflectivity,
             };
         }
 
