@@ -158,8 +158,64 @@ if (CONFIG.rewardImage) {
             transparent: true,
             opacity: 0,
         });
+        // Create rectangular vignette alpha map using canvas
+        const createVignetteAlphaMap = (edgeSoftness) => {
+            const size = 512;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Create image data for pixel-by-pixel control
+            const imageData = ctx.createImageData(size, size);
+            const data = imageData.data;
+
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    // Normalize coordinates to 0-1 range
+                    const u = x / size;
+                    const v = y / size;
+
+                    // Distance from center (0 at center, 1 at edges)
+                    const centerDistX = Math.abs(u - 0.5) * 2.0;
+                    const centerDistY = Math.abs(v - 0.5) * 2.0;
+                    const maxDist = Math.max(centerDistX, centerDistY);
+
+                    // Apply smoothstep for vignette (handle edgeSoftness = 0)
+                    let vignette;
+                    if (edgeSoftness <= 0.001) {
+                        // No vignette - fully opaque
+                        vignette = 1.0;
+                    } else {
+                        const smoothstep = (edge0, edge1, x) => {
+                            const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+                            return t * t * (3 - 2 * t);
+                        };
+                        vignette = smoothstep(1.0, 1.0 - edgeSoftness, maxDist);
+                    }
+                    const gray = Math.floor(vignette * 255);
+
+                    // alphaMap uses grayscale value (not alpha channel)
+                    // white = opaque, black = transparent
+                    const index = (y * size + x) * 4;
+                    data[index] = gray;      // R
+                    data[index + 1] = gray;  // G
+                    data[index + 2] = gray;  // B
+                    data[index + 3] = 255;   // A (always opaque)
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+
+            const vignetteTexture = new THREE.CanvasTexture(canvas);
+            return vignetteTexture;
+        };
+
+        const vignetteAlphaMap = createVignetteAlphaMap(CONFIG.reward.effects.edgeSoftness);
+
         const frontMaterial = new THREE.MeshStandardMaterial({
             map: texture,
+            alphaMap: vignetteAlphaMap,
             transparent: true,
             opacity: 0,
         });
@@ -1763,9 +1819,9 @@ function animate() {
             rewardBoxTargetOpacity = 0;
         }
 
-        // Animate scale (smooth interpolation)
+        // Animate scale (smooth interpolation) - tied to explosion speed
         const currentScale = rewardBox.scale.x;
-        const newScale = currentScale + (rewardBoxTargetScale - currentScale) * CONFIG.reward.animation.scaleSpeed;
+        const newScale = currentScale + (rewardBoxTargetScale - currentScale) * CONFIG.animation.explosion.speed;
         rewardBox.scale.setScalar(Math.max(0.001, newScale)); // Avoid zero scale
 
         // Animate opacity for all materials
