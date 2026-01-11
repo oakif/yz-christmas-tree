@@ -626,6 +626,10 @@ loadImageSetsManifest().then(manifest => {
     if (manifest && manifest.defaultSet) {
         switchImageSet(manifest.defaultSet);
     }
+    // Show settings modal on page load (with auto-close countdown)
+    if (availableImageSets.length > 0) {
+        showSettingsModal(true);
+    }
 });
 
 // --- POST PROCESSING ---
