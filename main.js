@@ -635,6 +635,10 @@ document.getElementById('password-input').addEventListener('keydown', (e) => {
 });
 
 // Settings modal event listeners
+document.getElementById('settings-icon').addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+});
+
 document.getElementById('settings-icon').addEventListener('click', (e) => {
     e.stopPropagation();
     showSettingsModal();
