@@ -23,6 +23,7 @@ const touchRotationOffset = new THREE.Vector2(0, 0);
 // Velocity for momentum after touch ends
 const touchVelocity = new THREE.Vector2(0, 0);
 let isTouching = false;
+let lastTouchMoveFrame = 0; // Track when last touchmove occurred
 
 export function initMouseTracking(configRef) {
     CONFIG = configRef;
@@ -94,7 +95,9 @@ function handleTouchStart(event) {
     const touch = event.touches[0];
     lastTouchPos = { x: touch.clientX, y: touch.clientY };
     isTouching = true;
-    // Don't reset velocity - allow momentum to continue
+    // Keep existing momentum - don't reset velocity
+    // The swipe will act as a "speed limit" - only increase if swiping faster
+    console.log('[touchstart] grabbing tree, keeping velocity', { velocity: { x: touchVelocity.x.toFixed(4), y: touchVelocity.y.toFixed(4) } });
 }
 
 function handleTouchMove(event) {
@@ -103,15 +106,33 @@ function handleTouchMove(event) {
 
     // Calculate delta from last position (not from start)
     const deltaX = ((touch.clientX - lastTouchPos.x) / window.innerWidth) * 2;
-    const deltaY = -((touch.clientY - lastTouchPos.y) / window.innerHeight) * 2;
+    // Positive deltaY when dragging down - tree follows finger direction
+    const deltaY = ((touch.clientY - lastTouchPos.y) / window.innerHeight) * 2;
 
-    // Add to accumulated rotation offset
-    touchRotationOffset.x += deltaX;
-    touchRotationOffset.y += deltaY;
+    // Axis separation: filter non-dominant axis to prevent cross-contamination
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+    const threshold = CONFIG.touchAxisSeparationThreshold || 2.0;
 
-    // Track velocity for momentum
-    touchVelocity.x = deltaX;
-    touchVelocity.y = deltaY;
+    let filteredX = deltaX;
+    let filteredY = deltaY;
+
+    if (absX > absY * threshold) {
+        // Primarily horizontal drag - suppress vertical
+        filteredY = 0;
+    } else if (absY > absX * threshold) {
+        // Primarily vertical drag - suppress horizontal
+        filteredX = 0;
+    } else {
+        // Mixed movement - dampen vertical in ambiguous cases
+        filteredY = deltaY * 0.5;
+    }
+
+    touchVelocity.x = filteredX;
+    touchVelocity.y = filteredY;
+    lastTouchMoveFrame = performance.now();
+
+    console.log('[touchmove] velocity:', { x: touchVelocity.x.toFixed(4), y: touchVelocity.y.toFixed(4) });
 
     lastTouchPos = { x: touch.clientX, y: touch.clientY };
     lastMouseMoveTime = performance.now();
@@ -121,6 +142,7 @@ function handleTouchEnd() {
     lastTouchPos = null;
     isTouching = false;
     // Velocity is preserved for momentum decay
+    console.log('[touchend] releasing, velocity:', { x: touchVelocity.x.toFixed(4), y: touchVelocity.y.toFixed(4) });
 }
 
 // Request device orientation permission (required on iOS 13+)
@@ -226,25 +248,35 @@ export function updateParallaxTargets(animationState) {
     const isExploding = animationState === "EXPLODING";
     const parallaxActive = isExploding ? CONFIG.explodedParallaxEnabled : CONFIG.parallaxEnabled;
 
-    // Apply momentum decay when not touching
-    if (!isTouching) {
-        // Add velocity to offset (momentum)
-        touchRotationOffset.x += touchVelocity.x;
-        touchRotationOffset.y += touchVelocity.y;
+    // Apply velocity to offset
+    touchRotationOffset.x += touchVelocity.x;
+    touchRotationOffset.y += touchVelocity.y;
 
-        // Decay velocity
+    // Apply friction when:
+    // 1. Not touching at all, OR
+    // 2. Touching but finger hasn't moved recently (holding still)
+    const timeSinceLastMove = performance.now() - lastTouchMoveFrame;
+    const fingerIsStill = isTouching && timeSinceLastMove > 50; // 50ms = ~3 frames
+
+    if (!isTouching || fingerIsStill) {
         const friction = 0.95;
         touchVelocity.x *= friction;
         touchVelocity.y *= friction;
 
-        // Slowly return offset to zero (spring back to center)
-        const returnSpeed = 0.02;
-        touchRotationOffset.x *= (1 - returnSpeed);
-        touchRotationOffset.y *= (1 - returnSpeed);
-
-        // Stop when very small
+        // Stop velocity when very small
         if (Math.abs(touchVelocity.x) < 0.0001) touchVelocity.x = 0;
         if (Math.abs(touchVelocity.y) < 0.0001) touchVelocity.y = 0;
+    }
+
+    // Spring back Y (up/down tilt) to center when not touching
+    if (!isTouching) {
+        const returnSpeed = 0.02;
+        touchRotationOffset.y *= (1 - returnSpeed);
+    }
+
+    // Log velocity (only when there's meaningful velocity)
+    if (Math.abs(touchVelocity.x) > 0.0001 || Math.abs(touchVelocity.y) > 0.0001) {
+        console.log('[update]', isTouching ? 'touching' : 'momentum', 'velocity:', { x: touchVelocity.x.toFixed(4), y: touchVelocity.y.toFixed(4) }, 'offset:', { x: touchRotationOffset.x.toFixed(4), y: touchRotationOffset.y.toFixed(4) });
     }
 
     if (parallaxActive) {
