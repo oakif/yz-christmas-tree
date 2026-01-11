@@ -1,38 +1,38 @@
 import * as THREE from 'three';
-import { CONFIG } from './config.js';
+import { CONFIG } from '../config.js';
 
 // Core modules
-import { state } from './js/state.js';
+import { state } from './state.js';
 import {
     createScene,
     createPerspectiveCamera,
     createOrthographicCamera,
     createRenderer,
     updateCameraOnStateChange,
-} from './js/core/scene.js';
-import { createEnvironmentMap } from './js/core/environment.js';
-import { createLighting } from './js/core/lighting.js';
-import { createPostProcessing } from './js/core/postprocessing.js';
+} from './core/scene.js';
+import { createEnvironmentMap } from './core/environment.js';
+import { createLighting } from './core/lighting.js';
+import { createPostProcessing } from './core/postprocessing.js';
 
 // Particle modules
-import { initGeometries, getGeometryForType } from './js/particles/geometry.js';
-import { sampleTreePosition, generateExplosionTargets } from './js/particles/distribution.js';
-import { getMaterialFromDefinition, validateAndMergeObjectDef } from './js/particles/materials.js';
+import { initGeometries, getGeometryForType } from './particles/geometry.js';
+import { sampleTreePosition, generateExplosionTargets } from './particles/distribution.js';
+import { getMaterialFromDefinition, validateAndMergeObjectDef } from './particles/materials.js';
 import {
     rebuildTreeParticles as rebuildTreeParticlesFn,
     rebuildAllTestParticles as rebuildAllTestParticlesFn,
     rebuildAllParticles as rebuildAllParticlesFn,
-} from './js/particles/particles.js';
+} from './particles/particles.js';
 
 // UI modules
-import { initFpsCounter, setFpsVisibility, updateFps } from './js/ui/fps.js';
+import { initFpsCounter, setFpsVisibility, updateFps } from './ui/fps.js';
 import {
     initModals,
     updateImageSets,
     showSettingsModal,
     showPasswordPrompt,
-} from './js/ui/modals.js';
-import { createGUI } from './js/ui/gui.js';
+} from './ui/modals.js';
+import { createGUI } from './ui/gui.js';
 
 // Showcase module
 import {
@@ -48,7 +48,7 @@ import {
     renderShowcase,
     getAvailableImageSets,
     getCurrentImageSet,
-} from './js/showcase/showcase.js';
+} from './showcase/showcase.js';
 
 // Interaction modules
 import {
@@ -57,8 +57,8 @@ import {
     getLastMouseMoveTime,
     updateParallaxTargets,
     applyParallaxToGroup,
-} from './js/interaction/mouse.js';
-import { initEvents, initResizeHandler } from './js/interaction/events.js';
+} from './interaction/mouse.js';
+import { initEvents, initResizeHandler } from './interaction/events.js';
 
 // Animation module
 import {
@@ -67,7 +67,7 @@ import {
     setAnimationState,
     updateCameraReference,
     startAnimationLoop,
-} from './js/animation/animation.js';
+} from './animation/animation.js';
 
 // --- SETUP SCENE ---
 const container = document.getElementById('canvas-container');
