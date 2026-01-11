@@ -1,7 +1,4 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { GUI } from 'dat.gui';
 import { CONFIG } from './config.js';
 import {
@@ -15,121 +12,41 @@ import {
 import { state } from './js/state.js';
 import { initGeometries, getGeometryForType } from './js/particles/geometry.js';
 import { sampleTreePosition, generateExplosionTargets } from './js/particles/distribution.js';
+import {
+    createScene,
+    createPerspectiveCamera,
+    createOrthographicCamera,
+    createRenderer,
+    updateCameraOnStateChange,
+} from './js/core/scene.js';
+import { createEnvironmentMap } from './js/core/environment.js';
+import { createLighting } from './js/core/lighting.js';
+import { createPostProcessing } from './js/core/postprocessing.js';
 
 // --- SETUP SCENE ---
 const container = document.getElementById('canvas-container');
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x050505, 0.015);
-
-// Create perspective camera
-const perspectiveCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-perspectiveCamera.position.x = CONFIG.cameraX;
-perspectiveCamera.position.y = CONFIG.cameraY;
-perspectiveCamera.position.z = CONFIG.cameraZ;
-perspectiveCamera.lookAt(0, 0, 0);
-
-// Create orthographic camera for isometric view
-const aspect = window.innerWidth / window.innerHeight;
-const frustumSize = CONFIG.isometricZoom;
-const orthographicCamera = new THREE.OrthographicCamera(
-    frustumSize * aspect / -2,
-    frustumSize * aspect / 2,
-    frustumSize / 2,
-    frustumSize / -2,
-    0.1,
-    1000
-);
-// Position at isometric angle, at similar distance from origin as perspective camera
-const angleRad = CONFIG.isometricAngle * Math.PI / 180;
-const perspectiveDistance = Math.sqrt(
-    CONFIG.cameraX ** 2 + CONFIG.cameraY ** 2 + CONFIG.cameraZ ** 2
-);
-orthographicCamera.position.set(
-    CONFIG.cameraX,
-    perspectiveDistance * Math.sin(angleRad),
-    perspectiveDistance * Math.cos(angleRad)
-);
-orthographicCamera.lookAt(0, 0, 0);
-
-// Select active camera based on configuration
+const scene = createScene();
+const perspectiveCamera = createPerspectiveCamera(CONFIG);
+const orthographicCamera = createOrthographicCamera(CONFIG);
 let camera = CONFIG.viewType === 'isometric' ? orthographicCamera : perspectiveCamera;
+const renderer = createRenderer(container, CONFIG);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = CONFIG.toneMappingExposure;
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.shadowMap.enabled = false; // Keep shadows off for performance
-container.appendChild(renderer.domElement);
+// Populate state with scene objects
+state.scene = scene;
+state.perspectiveCamera = perspectiveCamera;
+state.orthographicCamera = orthographicCamera;
+state.camera = camera;
+state.renderer = renderer;
 
-// --- ENVIRONMENT MAP FOR GLASS REFLECTIONS/REFRACTIONS ---
-let envMap = null;
-
-function createEnvironmentMap() {
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    const envScene = new THREE.Scene();
-
-    // Create gradient sky background
-    const gradientShader = {
-        uniforms: {
-            topColor: { value: new THREE.Color(CONFIG.environmentMap.topColor) },
-            bottomColor: { value: new THREE.Color(CONFIG.environmentMap.bottomColor) },
-            offset: { value: 33 },
-            exponent: { value: 0.6 }
-        },
-        vertexShader: `
-            varying vec3 vWorldPosition;
-            void main() {
-                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-                vWorldPosition = worldPosition.xyz;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform vec3 topColor;
-            uniform vec3 bottomColor;
-            uniform float offset;
-            uniform float exponent;
-            varying vec3 vWorldPosition;
-            void main() {
-                float h = normalize(vWorldPosition + offset).y;
-                gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
-            }
-        `
-    };
-
-    const skyGeo = new THREE.SphereGeometry(100, 32, 15);
-    const skyMat = new THREE.ShaderMaterial({
-        uniforms: gradientShader.uniforms,
-        vertexShader: gradientShader.vertexShader,
-        fragmentShader: gradientShader.fragmentShader,
-        side: THREE.BackSide
-    });
-    const sky = new THREE.Mesh(skyGeo, skyMat);
-    envScene.add(sky);
-
-    envMap = pmremGenerator.fromScene(envScene).texture;
-    pmremGenerator.dispose();
-}
-
-createEnvironmentMap();
+// --- ENVIRONMENT MAP ---
+let envMap = createEnvironmentMap(renderer, CONFIG);
 scene.environment = envMap;
+state.envMap = envMap;
 
 // --- CAMERA SWITCHING ---
 function updateCamera(newState) {
-    const targetViewType = (newState === 'EXPLODING')
-        ? CONFIG.explodedViewType
-        : CONFIG.viewType;
-
-    const newCamera = targetViewType === 'isometric'
-        ? orthographicCamera
-        : perspectiveCamera;
-
-    if (camera !== newCamera) {
-        camera = newCamera;
-        renderScene.camera = camera;
-    }
+    updateCameraOnStateChange(newState, CONFIG, state);
+    camera = state.camera;
 }
 
 // --- SETUP 3D SHOWCASE IMAGE BOX ---
@@ -729,17 +646,10 @@ loadImageSetsManifest().then(manifest => {
 });
 
 // --- POST PROCESSING ---
-const renderScene = new RenderPass(scene, camera);
-const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    CONFIG.bloomStrength,
-    CONFIG.bloomRadius,
-    CONFIG.bloomThreshold
-);
-
-const composer = new EffectComposer(renderer);
-composer.addPass(renderScene);
-composer.addPass(bloomPass);
+const { composer, renderPass, bloomPass } = createPostProcessing(renderer, scene, camera, CONFIG);
+state.composer = composer;
+state.renderPass = renderPass;
+state.bloomPass = bloomPass;
 
 // --- GEOMETRY INITIALIZATION ---
 // Geometries are now loaded from js/particles/geometry.js
@@ -962,57 +872,18 @@ CONFIG.objects.forEach(objectDef => {
     }
 });
 
-// --- SOFT, EVEN LIGHTING ---
-// All lighting parameters now come from CONFIG.lighting
+// --- LIGHTING ---
+const lights = createLighting(scene, CONFIG);
+state.lights = lights;
 
-const ambientLight = new THREE.AmbientLight(
-    CONFIG.lighting.ambient.color,
-    CONFIG.lighting.ambient.intensity
-);
-scene.add(ambientLight);
-
-const hemiLight = new THREE.HemisphereLight(
-    CONFIG.lighting.hemisphere.skyColor,
-    CONFIG.lighting.hemisphere.groundColor,
-    CONFIG.lighting.hemisphere.intensity
-);
-scene.add(hemiLight);
-
-const keyLight = new THREE.DirectionalLight(
-    CONFIG.lighting.keyLight.color,
-    CONFIG.lighting.keyLight.intensity
-);
-keyLight.position.set(...CONFIG.lighting.keyLight.position);
-scene.add(keyLight);
-
-const fillLight = new THREE.DirectionalLight(
-    CONFIG.lighting.fillLight.color,
-    CONFIG.lighting.fillLight.intensity
-);
-fillLight.position.set(...CONFIG.lighting.fillLight.position);
-scene.add(fillLight);
-
-const rimLight = new THREE.DirectionalLight(
-    CONFIG.lighting.rimLight.color,
-    CONFIG.lighting.rimLight.intensity
-);
-rimLight.position.set(...CONFIG.lighting.rimLight.position);
-scene.add(rimLight);
-
-const overheadLight = new THREE.DirectionalLight(
-    CONFIG.lighting.overheadLight.color,
-    CONFIG.lighting.overheadLight.intensity
-);
-overheadLight.position.set(...CONFIG.lighting.overheadLight.position);
-scene.add(overheadLight);
-
-const topGlow = new THREE.PointLight(
-    CONFIG.lighting.topGlow.color,
-    CONFIG.lighting.topGlow.intensity,
-    CONFIG.lighting.topGlow.range
-);
-topGlow.position.set(0, CONFIG.treeHeight / 2 + 5, 0);
-scene.add(topGlow);
+// Aliases for GUI compatibility
+const ambientLight = lights.ambient;
+const hemiLight = lights.hemi;
+const keyLight = lights.key;
+const fillLight = lights.fill;
+const rimLight = lights.rim;
+const overheadLight = lights.overhead;
+const topGlow = lights.topGlow;
 
 // --- TEST MATERIAL SYSTEM ---
 // Test objects that replace the tree, using the same distribution and animation logic
@@ -1384,14 +1255,14 @@ cameraFolder.add(guiControls, 'viewType', ['perspective', 'isometric']).name('Vi
     CONFIG.viewType = val;
     if (state !== 'EXPLODING') {
         camera = val === 'isometric' ? orthographicCamera : perspectiveCamera;
-        renderScene.camera = camera;
+        renderPass.camera = camera;
     }
 });
 cameraFolder.add(guiControls, 'explodedViewType', ['perspective', 'isometric']).name('Exploded View').onChange(val => {
     CONFIG.explodedViewType = val;
     if (state === 'EXPLODING') {
         camera = val === 'isometric' ? orthographicCamera : perspectiveCamera;
-        renderScene.camera = camera;
+        renderPass.camera = camera;
     }
 });
 cameraFolder.add(guiControls, 'isometricZoom', 20, 150).name('Iso Zoom').onChange(val => {
@@ -1543,13 +1414,15 @@ postProcessingFolder.add(guiControls, 'bloomThreshold', 0, 1, 0.01).name('Bloom 
 const envFolder = renderingFolder.addFolder('Environment');
 envFolder.addColor(guiControls, 'envTopColor').name('Sky Top').onChange(val => {
     CONFIG.environmentMap.topColor = stringToHex(val);
-    createEnvironmentMap();
+    envMap = createEnvironmentMap(renderer, CONFIG);
     scene.environment = envMap;
+    state.envMap = envMap;
 });
 envFolder.addColor(guiControls, 'envBottomColor').name('Sky Bottom').onChange(val => {
     CONFIG.environmentMap.bottomColor = stringToHex(val);
-    createEnvironmentMap();
+    envMap = createEnvironmentMap(renderer, CONFIG);
     scene.environment = envMap;
+    state.envMap = envMap;
 });
 
 // Lighting
