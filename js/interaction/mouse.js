@@ -85,6 +85,10 @@ export function initMouseTracking(configRef) {
 }
 
 function updateMousePosition(event) {
+    // Skip touch-derived pointer events - touch is handled separately via touch events
+    // pointerType is only on PointerEvents, not MouseEvents
+    if (event.pointerType && event.pointerType === 'touch') return;
+
     prevMouse.copy(mouse);
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -101,7 +105,6 @@ function handleTouchStart(event) {
     // Store current momentum for smooth blending
     storedMomentum = { x: touchVelocity.x, y: touchVelocity.y };
     touchMoveCount = 0;
-    console.log('[touchstart] grabbing tree, stored momentum', { velocity: { x: touchVelocity.x.toFixed(4), y: touchVelocity.y.toFixed(4) } });
 }
 
 function handleTouchMove(event) {
@@ -136,17 +139,26 @@ function handleTouchMove(event) {
     touchMoveCount++;
     const blendFrames = 5;
 
+    let appliedX, appliedY;
     if (touchMoveCount <= blendFrames && storedMomentum) {
         const blend = touchMoveCount / blendFrames;
-        touchVelocity.x = storedMomentum.x * (1 - blend) + filteredX * blend;
-        touchVelocity.y = storedMomentum.y * (1 - blend) + filteredY * blend;
+        appliedX = storedMomentum.x * (1 - blend) + filteredX * blend;
+        appliedY = storedMomentum.y * (1 - blend) + filteredY * blend;
     } else {
-        touchVelocity.x = filteredX;
-        touchVelocity.y = filteredY;
+        appliedX = filteredX;
+        appliedY = filteredY;
     }
+
+    // Apply directly to offset during active touch (not via velocity accumulation)
+    touchRotationOffset.x += appliedX;
+    touchRotationOffset.y += appliedY;
+
+    // Store velocity for momentum when touch ends
+    touchVelocity.x = appliedX;
+    touchVelocity.y = appliedY;
     lastTouchMoveFrame = performance.now();
 
-    console.log('[touchmove] velocity:', { x: touchVelocity.x.toFixed(4), y: touchVelocity.y.toFixed(4) });
+    // Logging removed - see touchstart/touchend for key events
 
     lastTouchPos = { x: touch.clientX, y: touch.clientY };
     lastMouseMoveTime = performance.now();
@@ -156,7 +168,6 @@ function handleTouchEnd() {
     lastTouchPos = null;
     isTouching = false;
     // Velocity is preserved for momentum decay
-    console.log('[touchend] releasing, velocity:', { x: touchVelocity.x.toFixed(4), y: touchVelocity.y.toFixed(4) });
 }
 
 // Request device orientation permission (required on iOS 13+)
@@ -262,41 +273,37 @@ export function updateParallaxTargets(animationState) {
     const isExploding = animationState === "EXPLODING";
     const parallaxActive = isExploding ? CONFIG.explodedParallaxEnabled : CONFIG.parallaxEnabled;
 
-    // Apply velocity to offset
-    touchRotationOffset.x += touchVelocity.x;
-    touchRotationOffset.y += touchVelocity.y;
-
-    // Apply friction when:
-    // 1. Not touching at all, OR
-    // 2. Touching but finger hasn't moved recently (holding still)
     const timeSinceLastMove = performance.now() - lastTouchMoveFrame;
     const fingerIsStill = isTouching && timeSinceLastMove > 50; // 50ms = ~3 frames
 
+    // Apply velocity to offset only when not actively dragging
+    // During active touch, offset is updated directly in handleTouchMove
     if (!isTouching || fingerIsStill) {
+        // X axis: apply velocity for momentum spin (no spring, just friction)
+        touchRotationOffset.x += touchVelocity.x;
         const friction = CONFIG.touchSpinFriction || 0.95;
         touchVelocity.x *= friction;
-        touchVelocity.y *= friction;
-
-        // Stop velocity when very small
         if (Math.abs(touchVelocity.x) < 0.0001) touchVelocity.x = 0;
-        if (Math.abs(touchVelocity.y) < 0.0001) touchVelocity.y = 0;
-    }
 
-    // Spring back Y (up/down tilt) to center when not touching
-    if (!isTouching) {
-        const returnSpeed = CONFIG.touchTiltReturnSpeed || 0.02;
-        touchRotationOffset.y *= (1 - returnSpeed);
+        // Y axis: Hooke's law spring - force proportional to displacement
+        // F = -k * x, where k is spring constant and x is displacement
+        // This creates proper spring dynamics with natural oscillation
+        const springK = CONFIG.touchTiltReturnSpeed || 0.08;  // Spring constant
+        const damping = 0.85;  // Damping factor to prevent endless oscillation
 
-        // Snap to zero when very close to prevent drift
-        if (Math.abs(touchRotationOffset.y) < 0.001) {
+        // Apply spring force to velocity (F = ma, assuming m=1, so a = F)
+        const springForce = -springK * touchRotationOffset.y;
+        touchVelocity.y += springForce;
+        touchVelocity.y *= damping;  // Apply damping
+
+        // Apply velocity to position
+        touchRotationOffset.y += touchVelocity.y;
+
+        // Snap to zero when both position and velocity are very small
+        if (Math.abs(touchRotationOffset.y) < 0.001 && Math.abs(touchVelocity.y) < 0.0001) {
             touchRotationOffset.y = 0;
             touchVelocity.y = 0;
         }
-    }
-
-    // Log velocity (only when there's meaningful velocity)
-    if (Math.abs(touchVelocity.x) > 0.0001 || Math.abs(touchVelocity.y) > 0.0001) {
-        console.log('[update]', isTouching ? 'touching' : 'momentum', 'velocity:', { x: touchVelocity.x.toFixed(4), y: touchVelocity.y.toFixed(4) }, 'offset:', { x: touchRotationOffset.x.toFixed(4), y: touchRotationOffset.y.toFixed(4) });
     }
 
     if (parallaxActive) {
@@ -321,7 +328,10 @@ export function updateParallaxTargets(animationState) {
 
 // Apply parallax to tree group
 export function applyParallaxToGroup(treeGroup) {
-    treeGroup.rotation.x += (targetRotation.x - treeGroup.rotation.x) * CONFIG.parallaxSmoothing;
+    // Use higher smoothing for tilt to keep up with spring physics
+    const tiltSmoothing = Math.max(CONFIG.parallaxSmoothing, 0.15);
+
+    treeGroup.rotation.x += (targetRotation.x - treeGroup.rotation.x) * tiltSmoothing;
     treeGroup.rotation.y += (targetRotation.y - treeGroup.rotation.y) * CONFIG.parallaxSmoothing;
     treeGroup.position.x += (targetPosition.x - treeGroup.position.x) * CONFIG.parallaxSmoothing;
     treeGroup.position.y += (targetPosition.y + CONFIG.treeYOffset - treeGroup.position.y) * CONFIG.parallaxSmoothing;

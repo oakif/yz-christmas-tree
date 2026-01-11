@@ -69,7 +69,7 @@ export const CONFIG = {
         resetMouseOnLeave: false, // Reset parallax to center when mouse leaves screen
         touch: {
             spinFriction: 0.95,           // How quickly horizontal spin slows (0.9 = fast, 0.99 = slow)
-            tiltReturnSpeed: 0.02,        // How quickly tilt returns to equilibrium (higher = faster)
+            tiltReturnSpeed: 0.08,        // How quickly tilt returns to equilibrium (higher = faster)
             axisSeparationThreshold: 2.0, // Ratio of primary/secondary axis to filter (higher = stricter)
         },
     },
