@@ -67,6 +67,11 @@ export const CONFIG = {
     interaction: {
         reassembleOnClick: true,  // Click while exploded to reassemble immediately
         resetMouseOnLeave: false, // Reset parallax to center when mouse leaves screen
+        touch: {
+            spinFriction: 0.95,           // How quickly horizontal spin slows (0.9 = fast, 0.99 = slow)
+            tiltReturnSpeed: 0.02,        // How quickly tilt returns to equilibrium (higher = faster)
+            axisSeparationThreshold: 2.0, // Ratio of primary/secondary axis to filter (higher = stricter)
+        },
     },
 
     // ========================================
@@ -506,4 +511,14 @@ export const CONFIG = {
 
     get imageDelay() { return this.showcase.delay; },
     set imageDelay(v) { this.showcase.delay = v; },
+
+    // Touch Interaction
+    get touchSpinFriction() { return this.interaction.touch?.spinFriction ?? 0.95; },
+    set touchSpinFriction(v) { if (this.interaction.touch) this.interaction.touch.spinFriction = v; },
+
+    get touchTiltReturnSpeed() { return this.interaction.touch?.tiltReturnSpeed ?? 0.02; },
+    set touchTiltReturnSpeed(v) { if (this.interaction.touch) this.interaction.touch.tiltReturnSpeed = v; },
+
+    get touchAxisSeparationThreshold() { return this.interaction.touch?.axisSeparationThreshold ?? 2.0; },
+    set touchAxisSeparationThreshold(v) { if (this.interaction.touch) this.interaction.touch.axisSeparationThreshold = v; },
 };
