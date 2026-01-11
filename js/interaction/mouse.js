@@ -1,4 +1,4 @@
-// Mouse parallax tracking
+// Mouse and device orientation parallax tracking
 import * as THREE from 'three';
 
 const mouse = new THREE.Vector2(0, 0);
@@ -8,6 +8,12 @@ const targetRotation = new THREE.Vector2(0, 0);
 const targetPosition = new THREE.Vector2(0, 0);
 let lastMouseMoveTime = 0;
 let CONFIG = null;
+
+// Device orientation state
+const deviceOrientation = new THREE.Vector2(0, 0);
+let baselineOrientation = null;
+let useDeviceOrientation = false;
+let deviceOrientationPermissionGranted = false;
 
 export function initMouseTracking(configRef) {
     CONFIG = configRef;
@@ -53,6 +59,16 @@ export function initMouseTracking(configRef) {
             }
         }
     }, { passive: true });
+
+    // Device orientation for mobile parallax
+    window.addEventListener('deviceorientation', handleDeviceOrientation, true);
+
+    // Request permission on first touch (required for iOS 13+)
+    document.addEventListener('touchstart', async () => {
+        if (!deviceOrientationPermissionGranted) {
+            await requestDeviceOrientationPermission();
+        }
+    }, { once: true });
 }
 
 function updateMousePosition(event) {
@@ -62,6 +78,51 @@ function updateMousePosition(event) {
     mouseVelocity.x = mouse.x - prevMouse.x;
     mouseVelocity.y = mouse.y - prevMouse.y;
     lastMouseMoveTime = performance.now();
+}
+
+// Request device orientation permission (required on iOS 13+)
+export async function requestDeviceOrientationPermission() {
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+        try {
+            const permission = await DeviceOrientationEvent.requestPermission();
+            deviceOrientationPermissionGranted = permission === 'granted';
+            return deviceOrientationPermissionGranted;
+        } catch (e) {
+            return false;
+        }
+    }
+    // No permission needed on Android/desktop
+    deviceOrientationPermissionGranted = true;
+    return true;
+}
+
+// Handle device orientation for mobile parallax
+function handleDeviceOrientation(event) {
+    if (event.gamma === null || event.beta === null) return;
+
+    // gamma: left/right tilt (-90 to 90)
+    // beta: front/back tilt (-180 to 180)
+
+    // Initialize baseline on first reading
+    if (baselineOrientation === null) {
+        baselineOrientation = { beta: event.beta, gamma: event.gamma };
+    }
+
+    // Continuous recalibration: slowly drift baseline toward current position
+    const recalibrationSpeed = 0.005;
+    baselineOrientation.gamma += (event.gamma - baselineOrientation.gamma) * recalibrationSpeed;
+    baselineOrientation.beta += (event.beta - baselineOrientation.beta) * recalibrationSpeed;
+
+    // Calculate delta from drifting baseline
+    const gammaDelta = event.gamma - baselineOrientation.gamma;
+    const betaDelta = event.beta - baselineOrientation.beta;
+
+    // Map deltas to -1 to 1 range, clamped at ~25 degrees of tilt
+    const tiltRange = 25;
+    deviceOrientation.x = Math.max(-1, Math.min(1, gammaDelta / tiltRange));
+    deviceOrientation.y = -Math.max(-1, Math.min(1, betaDelta / tiltRange));
+    useDeviceOrientation = true;
 }
 
 function resetMousePosition() {
@@ -79,6 +140,10 @@ function onVisibilityChange() {
 }
 
 export function getMouse() {
+    // Return device orientation on mobile when active, otherwise mouse
+    if (useDeviceOrientation) {
+        return deviceOrientation;
+    }
     return mouse;
 }
 
@@ -106,10 +171,11 @@ export function updateParallaxTargets(animationState) {
     if (parallaxActive) {
         const parallaxX = isExploding ? CONFIG.explodedParallaxStrengthX : CONFIG.parallaxStrengthX;
         const parallaxY = isExploding ? CONFIG.explodedParallaxStrengthY : CONFIG.parallaxStrengthY;
-        targetRotation.x = mouse.y * parallaxX;
-        targetRotation.y = mouse.x * parallaxY;
-        targetPosition.x = mouse.x * CONFIG.parallaxPositionStrengthX;
-        targetPosition.y = mouse.y * CONFIG.parallaxPositionStrengthY;
+        const input = getMouse(); // Use device orientation or mouse
+        targetRotation.x = input.y * parallaxX;
+        targetRotation.y = input.x * parallaxY;
+        targetPosition.x = input.x * CONFIG.parallaxPositionStrengthX;
+        targetPosition.y = input.y * CONFIG.parallaxPositionStrengthY;
     } else {
         targetRotation.x = 0;
         targetRotation.y = 0;
