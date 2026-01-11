@@ -70,6 +70,13 @@ export const CONFIG = {
     },
 
     // ========================================
+    // 2.5. UI
+    // ========================================
+    ui: {
+        settingsAutoCloseSeconds: 5,  // Seconds before settings modal auto-closes on page load
+    },
+
+    // ========================================
     // 3. ANIMATION & EFFECTS
     // ========================================
     animation: {
@@ -380,6 +387,10 @@ export const CONFIG = {
 
     get resetMouseOnLeave() { return this.interaction.resetMouseOnLeave; },
     set resetMouseOnLeave(v) { this.interaction.resetMouseOnLeave = v; },
+
+    // UI
+    get settingsAutoCloseSeconds() { return this.ui.settingsAutoCloseSeconds; },
+    set settingsAutoCloseSeconds(v) { this.ui.settingsAutoCloseSeconds = v; },
 
     // Animation - Idle
     get idleFloatSpeed() { return this.animation.idle.floatSpeed; },

@@ -520,7 +520,7 @@ function showSettingsModal(withCountdown = false) {
 
     // Only start auto-close countdown on initial page load
     if (withCountdown) {
-        settingsCountdown = 5;
+        settingsCountdown = CONFIG.settingsAutoCloseSeconds || 5;
         closeBtn.textContent = `Begin (${settingsCountdown}s)`;
 
         settingsAutoCloseTimer = setInterval(() => {
