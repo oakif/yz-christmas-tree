@@ -186,12 +186,23 @@ function setupSettingsModalListeners() {
         e.stopPropagation();
     }, { passive: true });
 
+    settingsIcon.addEventListener('touchend', (e) => {
+        e.stopPropagation();
+        e.preventDefault(); // Prevent click from also firing
+        showSettingsModal();
+    });
+
     settingsIcon.addEventListener('click', (e) => {
         e.stopPropagation();
         showSettingsModal();
     });
 
-    document.getElementById('settings-close').addEventListener('click', () => {
+    const closeBtn = document.getElementById('settings-close');
+    closeBtn.addEventListener('click', () => {
+        hideSettingsModal();
+    });
+    closeBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
         hideSettingsModal();
     });
 
