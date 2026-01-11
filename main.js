@@ -490,6 +490,67 @@ function finalizeImageLoad() {
     }
 }
 
+// Settings modal state
+let settingsAutoCloseTimer = null;
+let settingsCountdown = 10;
+
+function showSettingsModal(withCountdown = false) {
+    const modal = document.getElementById('settings-modal');
+    const select = document.getElementById('settings-image-set');
+    const countdown = document.getElementById('settings-countdown');
+
+    // Populate dropdown from availableImageSets
+    select.innerHTML = '';
+    availableImageSets.forEach(set => {
+        const option = document.createElement('option');
+        option.value = set.id;
+        option.textContent = set.name;
+        if (currentImageSet && currentImageSet.id === set.id) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    });
+
+    // Only start auto-close countdown on initial page load
+    if (withCountdown) {
+        settingsCountdown = 10;
+        countdown.textContent = `Auto-closing in ${settingsCountdown}s...`;
+        countdown.classList.remove('hidden');
+
+        settingsAutoCloseTimer = setInterval(() => {
+            settingsCountdown--;
+            if (settingsCountdown <= 0) {
+                hideSettingsModal();
+            } else {
+                countdown.textContent = `Auto-closing in ${settingsCountdown}s...`;
+            }
+        }, 1000);
+    } else {
+        countdown.classList.add('hidden');
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function hideSettingsModal() {
+    const modal = document.getElementById('settings-modal');
+    modal.classList.add('hidden');
+
+    if (settingsAutoCloseTimer) {
+        clearInterval(settingsAutoCloseTimer);
+        settingsAutoCloseTimer = null;
+    }
+}
+
+function cancelSettingsAutoClose() {
+    if (settingsAutoCloseTimer) {
+        clearInterval(settingsAutoCloseTimer);
+        settingsAutoCloseTimer = null;
+    }
+    const countdown = document.getElementById('settings-countdown');
+    countdown.classList.add('hidden');
+}
+
 // Password modal functions
 function showPasswordPrompt(set) {
     const modal = document.getElementById('password-modal');
