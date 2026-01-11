@@ -196,14 +196,13 @@ function setupSettingsModalListeners() {
 
         // Always call switchImageSet to clear previous state
         await switchImageSetFn(e.target.value);
+        currentImageSet = set;
 
         if (set.encrypted) {
-            // Show password input inline instead of separate modal
-            currentImageSet = set;
+            // Show password input inline
             showSettingsPasswordRow(set);
         } else {
             hideSettingsPasswordRow();
-            hideSettingsModal();
         }
     });
 
