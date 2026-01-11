@@ -399,6 +399,19 @@ function finalizeImageLoad() {
     if (showcaseTextures.length > 0) {
         showcaseImagesLoaded = true;
         console.log(`Successfully loaded ${showcaseTextures.length} images`);
+
+        // Remove old showcase box before creating new one
+        if (showcaseBox) {
+            scene.remove(showcaseBox);
+            showcaseBox.geometry.dispose();
+            showcaseBox.material.forEach(mat => {
+                if (mat.map) mat.map.dispose();
+                if (mat.alphaMap) mat.alphaMap.dispose();
+                mat.dispose();
+            });
+            showcaseBox = null;
+        }
+
         initializeShowcaseBox(showcaseTextures[0]);
     }
 }
