@@ -131,6 +131,38 @@
         #settings-icon:hover {
             opacity: 0.75;
         }
+
+        /* Settings modal */
+        .settings-row {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        .settings-row label {
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 14px;
+        }
+        .modal-content select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background: #252535;
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .modal-content select:focus {
+            outline: none;
+            border-color: #666;
+        }
+        .countdown {
+            color: #888;
+            font-size: 12px;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -152,6 +184,22 @@
             <div class="modal-buttons">
                 <button id="password-cancel">Cancel</button>
                 <button id="password-submit">Unlock</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Settings</h3>
+            <div class="settings-row">
+                <label for="settings-image-set">Image Set</label>
+                <select id="settings-image-set">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <p id="settings-countdown" class="countdown">Auto-closing in 10s...</p>
+            <div class="modal-buttons">
+                <button id="settings-close">Close</button>
             </div>
         </div>
     </div>
