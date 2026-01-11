@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark">
     <title>Magic Christmas Tree v3</title>
     <style>
@@ -159,43 +160,6 @@
             opacity: 0.75;
         }
 
-        /* Mobile: larger settings icon tap target */
-        @media (max-width: 768px) {
-            #settings-icon {
-                font-size: 44px;
-                padding: 12px;
-                top: 8px;
-                right: 8px;
-            }
-
-            .modal-content {
-                min-width: unset;
-                width: calc(100% - 32px);
-                max-width: 400px;
-                padding: 20px;
-                margin: 16px;
-            }
-
-            .modal-content h3 {
-                font-size: 20px;
-            }
-
-            .modal-content input,
-            .modal-content select {
-                font-size: 16px;
-                padding: 12px 14px;
-            }
-
-            .modal-buttons button {
-                padding: 14px 28px;
-                font-size: 16px;
-            }
-
-            .settings-row label {
-                font-size: 15px;
-            }
-        }
-
         /* Settings modal */
         .settings-row {
             display: flex;
@@ -269,6 +233,44 @@
         #settings-password-row .error {
             margin-top: 8px;
             margin-bottom: 0;
+        }
+
+        /* Mobile styles - at end for highest specificity */
+        @media (max-width: 768px) {
+            #settings-icon {
+                font-size: 44px;
+                padding: 12px;
+                top: 8px;
+                right: 8px;
+            }
+
+            .modal-content {
+                min-width: unset;
+                width: calc(100% - 32px);
+                max-width: 400px;
+                padding: 20px;
+                margin: 16px;
+            }
+
+            .modal-content h3 {
+                font-size: 20px;
+            }
+
+            .modal-content input,
+            .modal-content select {
+                font-size: 16px;
+                padding: 12px 14px;
+            }
+
+            .modal-buttons button {
+                padding: 14px 28px;
+                font-size: 16px;
+            }
+
+            .settings-row label,
+            .checkbox-row label {
+                font-size: 15px;
+            }
         }
     </style>
 </head>
