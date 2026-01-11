@@ -511,6 +511,9 @@ function showSettingsModal(withCountdown = false) {
         select.appendChild(option);
     });
 
+    // Sync reassemble checkbox with current config
+    document.getElementById('settings-reassemble').checked = CONFIG.reassembleOnClick;
+
     // Only start auto-close countdown on initial page load
     if (withCountdown) {
         settingsCountdown = 10;
@@ -623,6 +626,11 @@ document.getElementById('settings-modal').addEventListener('mousedown', (e) => {
 // Cancel auto-close on any interaction with settings modal
 document.getElementById('settings-modal').addEventListener('click', () => {
     cancelSettingsAutoClose();
+});
+
+// Reassemble checkbox
+document.getElementById('settings-reassemble').addEventListener('change', (e) => {
+    CONFIG.reassembleOnClick = e.target.checked;
 });
 
 // Initialize image sets on startup
