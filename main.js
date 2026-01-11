@@ -669,9 +669,16 @@ document.getElementById('settings-modal').addEventListener('mousedown', (e) => {
     e.stopPropagation();
 });
 
-// Cancel auto-close on any interaction with settings modal
-document.getElementById('settings-modal').addEventListener('click', () => {
-    cancelSettingsAutoClose();
+// Cancel auto-close on any interaction with settings modal content
+// Click on overlay (outside modal-content) dismisses the modal
+document.getElementById('settings-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'settings-modal') {
+        // Clicked on overlay, dismiss modal
+        hideSettingsModal();
+    } else {
+        // Clicked inside modal content, cancel auto-close
+        cancelSettingsAutoClose();
+    }
 });
 
 // Reassemble checkbox
