@@ -539,8 +539,12 @@ function showSettingsModal(withCountdown = false) {
     const fadeDuration = CONFIG.modalFadeDuration || 300;
     modal.style.setProperty('--modal-fade-duration', `${fadeDuration}ms`);
 
-    // Show modal
+    // Show modal with fade-in
+    modal.classList.add('fade-in');
     modal.classList.remove('hidden', 'fade-out');
+    // Force reflow then remove fade-in to trigger transition
+    modal.offsetHeight;
+    modal.classList.remove('fade-in');
 }
 
 function hideSettingsModal() {
