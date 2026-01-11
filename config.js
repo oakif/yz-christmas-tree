@@ -74,6 +74,7 @@ export const CONFIG = {
     // ========================================
     ui: {
         settingsAutoCloseSeconds: 5,  // Seconds before settings modal auto-closes on page load
+        modalFadeDuration: 300,       // Milliseconds for modal fade in/out animation
     },
 
     // ========================================
@@ -391,6 +392,9 @@ export const CONFIG = {
     // UI
     get settingsAutoCloseSeconds() { return this.ui.settingsAutoCloseSeconds; },
     set settingsAutoCloseSeconds(v) { this.ui.settingsAutoCloseSeconds = v; },
+
+    get modalFadeDuration() { return this.ui.modalFadeDuration; },
+    set modalFadeDuration(v) { this.ui.modalFadeDuration = v; },
 
     // Animation - Idle
     get idleFloatSpeed() { return this.animation.idle.floatSpeed; },

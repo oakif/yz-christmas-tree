@@ -57,6 +57,11 @@
             justify-content: center;
             align-items: center;
             z-index: 20000;
+            opacity: 0;
+            transition: opacity var(--modal-fade-duration, 300ms) ease-out;
+        }
+        .modal.visible {
+            opacity: 1;
         }
         .modal.hidden { display: none; }
         .hidden { display: none !important; }

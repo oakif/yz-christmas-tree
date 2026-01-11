@@ -535,17 +535,31 @@ function showSettingsModal(withCountdown = false) {
         closeBtn.textContent = 'Save';
     }
 
+    // Set CSS variable for fade duration
+    const fadeDuration = CONFIG.modalFadeDuration || 300;
+    modal.style.setProperty('--modal-fade-duration', `${fadeDuration}ms`);
+
+    // Show modal with fade-in
     modal.classList.remove('hidden');
+    // Force reflow to ensure transition works
+    modal.offsetHeight;
+    modal.classList.add('visible');
 }
 
 function hideSettingsModal() {
     const modal = document.getElementById('settings-modal');
-    modal.classList.add('hidden');
+    const fadeDuration = CONFIG.modalFadeDuration || 300;
 
     if (settingsAutoCloseTimer) {
         clearInterval(settingsAutoCloseTimer);
         settingsAutoCloseTimer = null;
     }
+
+    // Fade out then hide
+    modal.classList.remove('visible');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, fadeDuration);
 }
 
 function cancelSettingsAutoClose() {
