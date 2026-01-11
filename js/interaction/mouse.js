@@ -273,7 +273,7 @@ export function updateParallaxTargets(animationState) {
     const fingerIsStill = isTouching && timeSinceLastMove > 50; // 50ms = ~3 frames
 
     if (!isTouching || fingerIsStill) {
-        const friction = 0.95;
+        const friction = CONFIG.touchSpinFriction || 0.95;
         touchVelocity.x *= friction;
         touchVelocity.y *= friction;
 
