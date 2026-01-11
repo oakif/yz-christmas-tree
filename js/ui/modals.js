@@ -189,6 +189,15 @@ function setupSettingsModalListeners() {
         hideSettingsModal();
     });
 
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('settings-modal');
+            if (!modal.classList.contains('hidden')) {
+                hideSettingsModal();
+            }
+        }
+    });
+
     document.getElementById('settings-image-set').addEventListener('focus', () => {
         cancelSettingsAutoClose();
     });
